@@ -71,3 +71,15 @@ SMS-коды хранятся в том же KV `VIN_CACHE` (ключи `otp:*`)
 ## Лимиты и курс НБТ (добавлено 23.10.2026)
 - `/vin/:vin` без кэша: не больше `VIN_PER_IP` (30) запросов с одного IP в час и `VIN_PER_DAY` (300) всего в сутки, иначе `429 {error:"too_many", wait}`. Повторный VIN из кэша лимит не тратит. Нужен KV `VIN_CACHE`.
 - `GET /rate` → `{usd, eur, date, source:"nbt.tj"}`: курс НБТ на сегодня (по Душанбе), кэш 6 часов. Адрес выгрузки можно сменить переменной `NBT_URL` (`{date}` = ГГГГ-ММ-ДД). Разбор XML проверен только на образце: сайт nbt.tj недоступен из облачной среды разработки.
+
+## Штрафы ГАИ (fines.js, добавлено 24.10.2026)
+`GET /fines?plate=0123AB01&doc=AA1234567` → `{ source, checked, fines: [{ id, date, text, place, amount, paid, camera }] }`.
+Своей базы штрафов нет. Пока не задан `FINES_URL`, ответ `503 {"error":"not_configured"}`, и сайт пишет, что база не подключена (выдуманных штрафов не показывает).
+
+Подключение провайдера:
+- `FINES_URL` (переменная) — адрес провайдера с подстановками `{plate}` и `{doc}`, например `https://api.example.tj/fines?plate={plate}&tp={doc}`.
+- `FINES_KEY` (секрет) — уходит заголовком `Authorization: Bearer …`.
+- `FINES_SOURCE` — подпись источника в ответе (по умолчанию `gai`), `FINES_PER_IP` — лимит проверок в час с одного IP (20).
+
+Ответ провайдера разбирается в `normalizeFines`: список в `fines`/`items`/`data`/`result`, поля `id|number|resolution`, `date|datetime`, `text|article|description`, `place|address`, `amount|sum`, `paid|status=="paid"`. Если формат у провайдера другой, правится только эта функция.
+Кэш 30 минут, ключ — SHA-256 от номера и техпаспорта, открытым текстом в KV они не лежат.

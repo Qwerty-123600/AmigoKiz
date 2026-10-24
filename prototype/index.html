@@ -4,7 +4,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Golos+Text:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-/* Layout: sticky header, hash-routed views (home / search / car-N / vin / report / customs), mobile tab bar.
+/* Layout: sticky header, hash-routed views (home / search / car-N / vin / report / customs / fines), mobile tab bar.
    Palette: Tajik flag green as brand, crown gold for VIP and highlights, signal red for the .tj mark and danger. */
 :root{
   --bg:#F2F5F3; --surface:#FFFFFF; --surface-2:#E7EDE9; --ink:#0D1A15; --muted:#5A6B63; --line:#D5DED8;
@@ -422,6 +422,36 @@ h1,h2,.bigprice,.card .price,.paycta .price,.ctotal b{font-family:var(--display)
 .clines .off dd{color:var(--muted);text-decoration:line-through;font-weight:500}
 .cbasis{font-size:13.5px;background:var(--surface-2);border-radius:var(--r-sm);padding:10px 12px}
 .carcus{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;background:var(--accent-soft);border-radius:var(--r-sm);padding:10px 12px;font-size:14px}
+/* fines check (штрафы ГАИ) */
+.fnform{display:grid;gap:10px;grid-template-columns:minmax(0,1fr)}
+@media(min-width:760px){.fnform{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) auto;align-items:end}}
+.fnform label{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--deep-muted);font-weight:700;display:grid;gap:6px}
+.fnform input{min-width:0;min-height:56px;background:var(--surface);color:var(--ink);border:2px solid transparent;border-radius:14px;padding:0 14px;font-family:var(--mono);font-size:clamp(16px,2.6vw,20px);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.fnform input:focus{outline:none;border-color:var(--accent)}
+.fnform .btn{min-height:56px}
+.fnhint{font-size:13px;color:var(--deep-muted)}
+.fnhint.bad{color:#FFB3BD}
+.fnex{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--deep-muted)}
+.fnex button{background:rgba(255,255,255,.1);color:var(--deep-ink);border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:6px 12px;font-family:var(--mono);font-weight:700;font-size:13px}
+.fnres{display:grid;gap:14px}
+.fnsum{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;border-radius:var(--r);padding:18px;background:var(--surface);border:1px solid var(--line)}
+.fnsum.ok{background:var(--ok-soft);border-color:transparent}
+.fnsum.due{background:var(--danger-soft);border-color:transparent}
+.fnsum b{font-size:clamp(22px,4vw,30px);line-height:1.1}
+.fnsum .plate{font-family:var(--mono);font-weight:700;background:var(--surface);border:2px solid var(--ink);border-radius:8px;padding:4px 10px;letter-spacing:.08em;white-space:nowrap}
+.fnlist{display:grid;gap:10px}
+.fnitem{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);padding:14px}
+.fnitem h3{font-size:15.5px;margin:0}
+.fnitem .meta{font-size:13px;color:var(--muted);grid-column:1/-1;display:flex;gap:6px 14px;flex-wrap:wrap}
+.fnitem .amt{font-weight:800;font-size:17px;text-align:right;white-space:nowrap}
+.fnitem.paid .amt{color:var(--muted);text-decoration:line-through;font-weight:600}
+.fnways{display:grid;gap:12px}
+@media(min-width:760px){.fnways{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.fnways .panel h3{font-size:15.5px;margin:0}
+.fnways .panel p{margin:0;font-size:14px;color:var(--muted)}
+.fnways code{font-family:var(--mono);font-weight:700;color:var(--ink);background:var(--surface-2);padding:1px 6px;border-radius:6px}
+.finesband{display:flex;justify-content:space-between;gap:14px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px 18px}
+.finesband p{margin:4px 0 0}
 /* ===== v2 redesign layer: immersive hero, softer cards, calmer chrome. Overrides the base rules above. ===== */
 :root{--r:20px;--r-sm:12px;--lift:0 1px 2px rgba(13,26,21,.06),0 8px 24px rgba(13,26,21,.07);--lift-h:0 2px 4px rgba(13,26,21,.08),0 18px 40px rgba(13,26,21,.14);
   --hero-a:#063D2C;--hero-b:#0B6E4F;--hero-c:#0E3B52;--bg:#F5F7F4;--line:#E2E8E3}
@@ -867,6 +897,7 @@ button.pth{border:0;padding:0;cursor:zoom-in}
       <button data-nav="search" data-i18n="nav_moto">Мото</button>
       <button data-nav="search" data-i18n="nav_parts">Запчасти</button>
             <button data-nav="customs" data-i18n="nav_customs">Растаможка</button>
+      <button data-nav="fines" data-i18n="nav_fines">Штрафы</button>
       <button data-nav="dtp" data-i18n="nav_dtp">ДТП</button>
       <button data-nav="vin" class="vin-link" data-i18n="nav_vin">Проверка VIN</button>
     </nav>
@@ -931,6 +962,8 @@ button.pth{border:0;padding:0;cursor:zoom-in}
       <button class="btn btn-brand" data-nav="customs" data-i18n="calc_btn">Рассчитать растаможку</button>
     </div>
     </div>
+
+    <div class="finesband"><div><h2 data-i18n="fn_band_t">Штрафы ГАИ по госномеру</h2><p class="muted" data-i18n="fn_band_p">Проверьте неоплаченные штрафы перед покупкой машины или поездкой.</p></div><button class="btn btn-brand" data-nav="fines" data-i18n="fn_btn">Проверить штрафы</button></div>
 
     <div class="dtpband"><div><h2 data-i18n="dtp_band_t">ДТП и повреждения по VIN</h2><p class="muted" data-i18n="dtp_band_p"></p></div><div class="dtpband-act"><button class="btn btn-brand" data-nav="dtp" data-i18n="dtp_open">Открыть раздел</button><button class="btn btn-ghost" data-dtpadd="" data-i18n="dtp_add">+ Добавить ДТП</button></div></div>
 
@@ -1069,6 +1102,34 @@ button.pth{border:0;padding:0;cursor:zoom-in}
   </div>
 </section>
 
+<!-- FINES -->
+<section class="view wrap" id="v-fines" hidden>
+  <div class="crumbs"><button class="link" data-nav="home" data-i18n="home">Главная</button> / <span data-i18n="nav_fines">Штрафы</span></div>
+  <div class="stack" style="gap:18px">
+    <div class="vinhero">
+      <h1 data-i18n="fn_t">Проверка штрафов ГАИ</h1>
+      <p data-i18n="fn_p">Введите госномер и номер техпаспорта. Покажем неоплаченные штрафы за нарушения ПДД.</p>
+      <form class="fnform" id="fnform" novalidate>
+        <label><span data-i18n="fn_plate">Госномер</span><input id="fn-plate" maxlength="12" autocomplete="off" spellcheck="false" placeholder="0123 AB 01"></label>
+        <label><span data-i18n="fn_doc">Номер техпаспорта</span><input id="fn-doc" maxlength="14" autocomplete="off" spellcheck="false" placeholder="AA 1234567"></label>
+        <button class="btn btn-accent" type="submit" data-i18n="fn_btn">Проверить штрафы</button>
+      </form>
+      <div class="fnhint" id="fn-hint" aria-live="polite"></div>
+      <div class="fnex fn-examples"><span data-i18n="examples">Примеры:</span><button type="button" data-fnex="0001 AA 01">0001 AA 01</button><span data-i18n="fn_ex_n">демо-данные</span></div>
+    </div>
+    <div class="fnres" id="fn-res" aria-live="polite"></div>
+    <div>
+      <div class="row-head"><h2 data-i18n="fn_ways_t">Другие способы проверить и оплатить</h2></div>
+      <div class="fnways">
+        <div class="panel"><h3 data-i18n="fn_w1_t">SMS «Шаҳри бехатар»</h3><p data-i18n-html="fn_w1_p">Абонентам МегаФон: наберите <code>*0008#</code> и укажите госномер и номер техпаспорта. Сервис платный, условия уточняйте у оператора.</p></div>
+        <div class="panel"><h3 data-i18n="fn_w2_t">Платёжные терминалы</h3><p data-i18n="fn_w2_p">В терминалах есть раздел «Безопасный город»: там можно узнать штрафы и сразу оплатить их.</p></div>
+        <div class="panel"><h3 data-i18n="fn_w3_t">ГАИ МВД</h3><p data-i18n="fn_w3_p">Если не согласны со штрафом, обратитесь в отделение ГАИ с постановлением и техпаспортом.</p></div>
+      </div>
+    </div>
+    <p class="note" data-i18n="fn_disc">Госномер и техпаспорт используются только для ответа на ваш запрос и не сохраняются на myauto.tj. Сведения о штрафах справочные: точные данные у ГАИ МВД РТ.</p>
+  </div>
+</section>
+
 <!-- REPORT -->
 <section class="view wrap" id="v-report" hidden></section>
 <section class="view wrap" id="v-favs" hidden></section>
@@ -1082,7 +1143,7 @@ button.pth{border:0;padding:0;cursor:zoom-in}
   <div class="wrap">
     <div><b>myauto.tj</b><button data-info="about">О проекте</button><button data-info="rules">Правила</button><button data-info="prices">Тарифы</button></div>
     <div><b data-i18n="sections">Разделы</b><button data-nav="search">Легковые</button><button data-nav="search">Мото</button><button data-nav="search">Спецтехника</button><button data-nav="vin">Проверка VIN</button><button data-nav="dtp">ДТП и повреждения</button></div>
-    <div><b data-i18n="help">Помощь</b><button data-post="1">Как подать объявление</button><button data-nav="customs">Растаможка</button><button data-info="contacts">Контакты</button></div>
+    <div><b data-i18n="help">Помощь</b><button data-post="1">Как подать объявление</button><button data-nav="customs">Растаможка</button><button data-nav="fines" data-i18n="nav_fines_f">Проверка штрафов</button><button data-info="contacts">Контакты</button></div>
     <div><b>Telegram</b><span>@myauto_tj</span><p class="note" style="margin-top:6px" data-i18n="rate_note">Курс НБТ в прототипе условный: 1 $ = 9,30 сом.</p></div>
   </div>
 </footer>
@@ -2327,6 +2388,84 @@ function openCalcFor(id){
   $("#c-price").value=Math.round(c.usd); nav("customs");
 }
 
+/* ---------- штрафы ГАИ: по госномеру и техпаспорту через прокси /fines; без базы честно говорим, что не подключено ---------- */
+Object.assign(T,{
+  nav_fines:["Штрафы","Ҷаримаҳо"], nav_fines_f:["Проверка штрафов","Санҷиши ҷаримаҳо"],
+  fn_t:["Проверка штрафов ГАИ","Санҷиши ҷаримаҳои БДА"],
+  fn_p:["Введите госномер и номер техпаспорта. Покажем неоплаченные штрафы за нарушения ПДД.","Рақами давлатӣ ва рақами шиносномаи техникиро ворид кунед. Ҷаримаҳои пардохтнашударо барои вайрон кардани қоидаҳои роҳ нишон медиҳем."],
+  fn_plate:["Госномер","Рақами давлатӣ"], fn_doc:["Номер техпаспорта","Рақами шиносномаи техникӣ"],
+  fn_btn:["Проверить штрафы","Санҷидани ҷаримаҳо"], fn_ex_n:["демо-данные","маълумоти намунавӣ"],
+  fn_band_t:["Штрафы ГАИ по госномеру","Ҷаримаҳои БДА аз рӯи рақам"],
+  fn_band_p:["Проверьте неоплаченные штрафы перед покупкой машины или поездкой.","Пеш аз харидани мошин ё сафар ҷаримаҳои пардохтнашударо санҷед."],
+  fn_ways_t:["Другие способы проверить и оплатить","Роҳҳои дигари санҷиш ва пардохт"],
+  fn_w1_t:["SMS «Шаҳри бехатар»","SMS «Шаҳри бехатар»"],
+  fn_w1_p:["Абонентам МегаФон: наберите <code>*0008#</code> и укажите госномер и номер техпаспорта. Сервис платный, условия уточняйте у оператора.","Барои муштариёни МегаФон: <code>*0008#</code>-ро занед ва рақами давлатӣ ва шиносномаи техникиро нишон диҳед. Хизматрасонӣ пулакӣ аст, шартҳоро аз оператор пурсед."],
+  fn_w2_t:["Платёжные терминалы","Терминалҳои пардохт"],
+  fn_w2_p:["В терминалах есть раздел «Безопасный город»: там можно узнать штрафы и сразу оплатить их.","Дар терминалҳо бахши «Шаҳри бехатар» ҳаст: дар он ҷо ҷаримаҳоро фаҳмидан ва фавран пардохт кардан мумкин аст."],
+  fn_w3_t:["ГАИ МВД","БДА ВКД"],
+  fn_w3_p:["Если не согласны со штрафом, обратитесь в отделение ГАИ с постановлением и техпаспортом.","Агар бо ҷарима розӣ набошед, бо қарор ва шиносномаи техникӣ ба шуъбаи БДА муроҷиат кунед."],
+  fn_disc:["Госномер и техпаспорт используются только для ответа на ваш запрос и не сохраняются на myauto.tj. Сведения о штрафах справочные: точные данные у ГАИ МВД РТ.","Рақам ва шиносномаи техникӣ танҳо барои ҷавоб ба дархости шумо истифода мешаванд ва дар myauto.tj нигоҳ дошта намешаванд. Маълумот тахминӣ аст: маълумоти дақиқ дар БДА ВКД ҶТ."]
+});
+// Кириллица, похожая на латиницу, — частая ошибка при вводе номера.
+const FN_LAT={"А":"A","В":"B","Е":"E","К":"K","М":"M","Н":"H","О":"O","Р":"P","С":"C","Т":"T","Х":"X","У":"Y"};
+const fnClean=s=>String(s||"").toUpperCase().replace(/[АВЕКМНОРСТХУ]/g,c=>FN_LAT[c]).replace(/[^A-Z0-9]/g,"");
+const FN_PLATE_RE=/^\d{4}[A-Z]{2}\d{2}$/;
+const fnPlateFmt=p=>FN_PLATE_RE.test(p)?`${p.slice(0,4)} ${p.slice(4,6)} ${p.slice(6)}`:p;
+// Пример для витрины раздела, помечен как демо. Настоящие номера никогда не получают выдуманных штрафов.
+const FN_DEMO={"0001AA01":{plate:"0001AA01",source:"demo",demo:true,fines:[
+  {id:"D-1",date:"2026-09-14T08:42",text:["Превышение скорости на 20–40 км/ч","Зиёд кардани суръат ба 20–40 км/соат"],place:["Душанбе, пр. Рудаки","Душанбе, хиёб. Рӯдакӣ"],amount:290,paid:false,camera:true},
+  {id:"D-2",date:"2026-08-02T19:10",text:["Проезд на запрещающий сигнал светофора","Гузаштан аз чароғаки манъкунанда"],place:["Душанбе, ул. Айни","Душанбе, к. Айнӣ"],amount:580,paid:false,camera:true},
+  {id:"D-3",date:"2026-05-21T13:05",text:["Непристёгнутый ремень безопасности","Камарбанди бехатарӣ баста нашудааст"],place:["Вахдат","Ваҳдат"],amount:145,paid:true,camera:false}]}};
+let FINES=null;
+function fnHint(){
+  const p=fnClean($("#fn-plate").value),el=$("#fn-hint");
+  el.classList.remove("bad");
+  if(!p){el.textContent="";return;}
+  el.textContent=FN_PLATE_RE.test(p)?R(`Номер: ${fnPlateFmt(p)}`,`Рақам: ${fnPlateFmt(p)}`):R("Обычный формат: 4 цифры, 2 буквы, код региона (0123 AB 01). Другие номера тоже можно проверить.","Шакли маъмул: 4 рақам, 2 ҳарф, рамзи вилоят (0123 AB 01).");
+}
+async function checkFines(){
+  const plate=fnClean($("#fn-plate").value),doc=fnClean($("#fn-doc").value),el=$("#fn-hint");
+  if(plate.length<5){el.textContent=R("Введите госномер","Рақами давлатиро ворид кунед");el.classList.add("bad");$("#fn-plate").focus();return;}
+  if(FN_DEMO[plate]&&(typeof SHOWCASE==="undefined"||!SHOWCASE)){FINES=FN_DEMO[plate];renderFines();return;}
+  if(doc.length<6){el.textContent=R("Введите номер техпаспорта: без него база ГАИ не отвечает","Рақами шиносномаи техникиро ворид кунед");el.classList.add("bad");$("#fn-doc").focus();return;}
+  FINES={plate,loading:true};renderFines();
+  if(!VIN_API){FINES={plate,error:"not_configured"};renderFines();return;}
+  try{
+    const r=await fetch(`${VIN_API}/fines?plate=${plate}&doc=${doc}`,{signal:AbortSignal.timeout(15000)});
+    const j=await r.json().catch(()=>({error:"bad_json"}));
+    FINES=r.ok&&Array.isArray(j.fines)?{...j,plate}:{plate,error:j.error||"http_"+r.status,wait:j.wait};
+  }catch(e){FINES={plate,error:"unreachable"};}
+  renderFines();
+}
+function renderFines(){
+  const box=$("#fn-res"),F=FINES; if(!box) return;
+  if(!F){box.innerHTML="";return;}
+  const pl=`<span class="plate">${esc(fnPlateFmt(F.plate))}</span>`;
+  if(F.loading){box.innerHTML=`<div class="fnsum">${pl}<span class="muted">${R("Проверяем…","Месанҷем…")}</span></div>`;return;}
+  if(F.error){
+    const msg=F.error==="not_configured"?R("Онлайн-база штрафов ГАИ ещё не подключена к myauto.tj. Мы не показываем выдуманные данные: пока проверьте штрафы способами ниже.","Базаи ҷаримаҳои БДА ҳоло ба myauto.tj пайваст нашудааст. Ҳоло бо роҳҳои дар поён буда санҷед.")
+      :F.error==="too_many"?R(`Слишком много проверок подряд. Попробуйте через ${Math.ceil((F.wait||600)/60)} мин.`,`Санҷишҳо зиёданд. Баъд аз ${Math.ceil((F.wait||600)/60)} дақ. кӯшиш кунед.`)
+      :F.error==="not_found"?R("По этому номеру и техпаспорту машина не найдена. Проверьте данные.","Мошин ёфт нашуд. Маълумотро санҷед.")
+      :R("База штрафов сейчас не отвечает. Попробуйте позже или проверьте способами ниже.","Базаи ҷаримаҳо ҳоло ҷавоб намедиҳад. Баъдтар кӯшиш кунед.");
+    box.innerHTML=`<div class="fnsum">${pl}<span style="flex:1 1 260px">${msg}</span></div>`;return;
+  }
+  const due=F.fines.filter(f=>!f.paid),sum=due.reduce((s,f)=>s+(+f.amount||0),0);
+  const L2=v=>Array.isArray(v)?v[LANG==="ru"?0:1]:v;
+  const when=d=>{const x=new Date(d);return isNaN(x)?esc(d):x.toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})};
+  const items=F.fines.slice().sort((a,b)=>a.paid-b.paid||String(b.date).localeCompare(a.date)).map(f=>`<div class="fnitem${f.paid?" paid":""}">
+    <h3>${esc(L2(f.text))}</h3><div class="amt">${fmt(+f.amount||0)} сом.</div>
+    <div class="meta"><span>${when(f.date)}</span>${f.place?`<span>${esc(L2(f.place))}</span>`:""}${f.camera?`<span>${R("камера","камера")}</span>`:""}
+      <span class="badge ${f.paid?"g":"bad"}">${f.paid?R("оплачен","пардохт шуд"):R("не оплачен","пардохт нашудааст")}</span>${f.id?`<span class="mono">№ ${esc(f.id)}</span>`:""}</div></div>`).join("");
+  box.innerHTML=`${F.demo?`<div class="demo-banner"><b>${R("Демо","Намуна")}</b> ${R("Это пример, как выглядит результат. Для настоящего номера покажем данные ГАИ после подключения базы.","Ин намунаи натиҷа аст.")}</div>`:""}
+    <div class="fnsum ${due.length?"due":"ok"}"><div style="display:grid;gap:4px"><span class="muted">${due.length?R(`Не оплачено: ${due.length}`,`Пардохтнашуда: ${due.length}`):R("Неоплаченных штрафов нет","Ҷаримаи пардохтнашуда нест")}</span><b>${due.length?fmt(sum)+" сом.":"0 сом."}</b></div>${pl}</div>
+    ${F.fines.length?`<div class="fnlist">${items}</div>`:""}
+    ${due.length?`<p class="note">${R("Оплата прямо на myauto.tj появится после подключения платёжного сервиса. Сейчас оплатите в терминале или приложении банка по номеру постановления.","Пардохт дар myauto.tj баъдтар илова мешавад. Ҳоло дар терминал ё барномаи бонк пардохт кунед.")}</p>`:""}
+    ${F.checked?`<p class="note">${R("Проверено","Санҷида шуд")}: ${when(F.checked)}${F.source&&F.source!=="demo"?" · "+esc(F.source):""}</p>`:""}`;
+}
+$("#fnform").addEventListener("submit",e=>{e.preventDefault();checkFines();});
+$("#fn-plate").addEventListener("input",fnHint);
+document.addEventListener("click",e=>{const b=e.target.closest("[data-fnex]");if(!b)return;$("#fn-plate").value=b.dataset.fnex;$("#fn-doc").value="";fnHint();checkFines();});
+
 /* ---------- ДТП и повреждения: локальная база по VIN (основа будущей автотеки) ---------- */
 T.nav_dtp=["ДТП","Садамаҳо"];
 T.dtp_band_t=["ДТП и повреждения по VIN","Садама ва осеб аз рӯи VIN"];
@@ -2844,6 +2983,7 @@ function applyLang(){
   syncListings(); fillSelects(); renderHome(); renderSearch(); onVin(); calcInit(); calcCompute();
   if(VIEW==="car") renderCar(CURCAR);
   if(VIEW==="report") renderReport();
+  if(VIEW==="fines"){fnHint();renderFines();}
   if(["favs","seller","me","dtp","admin"].includes(VIEW)) show(VIEW);
   renderAcct();
 }
@@ -2854,13 +2994,14 @@ function show(view){
   $("#fav-tab").classList.toggle("on",view==="favs");
   $$(".tabbar [data-nav]").forEach(b=>b.classList.toggle("on",b.dataset.nav===view||(view==="report"&&b.dataset.nav==="vin")||(view==="car"&&b.dataset.nav==="search")));
   $$("nav.main [data-nav=dtp]").forEach(b=>b.classList.toggle("on",view==="dtp"));
-  $$("nav.main [data-nav]:not([data-nav=dtp])").forEach(b=>b.classList.toggle("on",((view==="vin"||view==="report")&&b.dataset.nav==="vin")||(view==="customs"&&b.dataset.nav==="customs")));
+  $$("nav.main [data-nav]:not([data-nav=dtp])").forEach(b=>b.classList.toggle("on",((view==="vin"||view==="report")&&b.dataset.nav==="vin")||(view==="customs"&&b.dataset.nav==="customs")||(view==="fines"&&b.dataset.nav==="fines")));
   setFiltersOpen(false);
   if(view==="search"){renderSearch();mobileFilterButtons();}
   if(view==="car") renderCar(CURCAR);
   if(view==="vin") onVin();
   if(view==="report") renderReport();
   if(view==="customs") calcCompute();
+  if(view==="fines"){fnHint();renderFines();}
   if(view==="favs") renderFavs();
   if(view==="seller") renderSeller();
   if(view==="me") renderMe();
@@ -2874,7 +3015,7 @@ function route(){
   else if(/^seller-\w+$/.test(h)){SELLERID=h.slice(7);show("seller");}
   else if(h==="dtp"||/^dtp-[A-HJ-NPR-Z0-9]{17}$/.test(h)){DTPVIN=h.slice(4);show("dtp");}
   else if(h==="report") REPORT?show("report"):show("vin");
-  else if(["home","search","vin","customs","favs","me","admin"].includes(h)) show(h);
+  else if(["home","search","vin","customs","fines","favs","me","admin"].includes(h)) show(h);
   else show("home");
 }
 function nav(h){ if((location.hash||"").slice(1)===h) route(); else location.hash=h; }
