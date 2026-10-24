@@ -1,0 +1,17 @@
+{
+  // Один Worker: витрина myauto.tj (public/) + VIN-прокси, курс НБТ и SMS-коды (worker/).
+  // Статические файлы отдаются первыми, остальные адреса (/vin/*, /rate, /otp/*) идут в worker.
+  "name": "myauto",
+  "main": "worker/worker.js",
+  "compatibility_date": "2025-01-01",
+  "workers_dev": true,
+  "assets": { "directory": "./public" },
+  "kv_namespaces": [{ "binding": "VIN_CACHE", "id": "f373e15ae64d4965b592eb2342785e1c" }],
+  "vars": {
+    "ALLOWED_ORIGINS": "https://myauto.myauto-tj.workers.dev,https://myauto.tj,https://www.myauto.tj",
+    "SMS_PROVIDER": "demo",
+    "VIN_PER_IP": "30",
+    "VIN_PER_DAY": "300"
+  }
+  // Секреты задаются в панели Cloudflare (Settings → Variables and Secrets): V17_USER, V17_PASS, ADMIN_KEY, OTP_SECRET.
+}
