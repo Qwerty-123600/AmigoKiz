@@ -142,6 +142,9 @@ body.showcase .tabbar{grid-template-columns:repeat(4,1fr)}
 body.showcase .fn-examples{display:none!important}
 body.showcase .tabbar .sc-only{display:flex!important}
 body.showcase footer .sc-only{display:block!important}
+body.showcase .svc-dtp{display:none!important}
+@media(max-width:899px){body.showcase .svcs .svc:first-child{grid-column:1/-1}}
+@media(min-width:900px){body.showcase .svcs{grid-template-columns:repeat(3,minmax(0,1fr))}}
 """
 # CSS только в основной <style> после <title>: первый блок — служебный сброс
 sub("/* Layout: sticky header,", CSS + "/* Layout: sticky header,")
