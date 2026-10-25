@@ -12,7 +12,7 @@
 - **AuditLog** `{at, by, act, target, note}`; `act`: approve, reject, block, pay_ok, pay_no, role, rev_hide, rev_keep. Пишется на каждое действие модератора и админа, не удаляется.
 - **Review** `{id, sellerId, authorId, listingId?, rating: 1..5, deal: "bought"|"viewed"|"other", text, reply?: {text, at}, createdAt}`.
 
-- **Incident** (ДТП и повреждения, основа будущей автотеки) `{id, vin, kind, date: "YYYY-MM-DD", city, place, severity, parts: string[], airbags, repaired, evidence, docNo, desc, photos: string[], reporterId, reporterRole: "user"|"staff", status: "pending"|"verified"|"rejected", verifiedBy, verifiedAt, rejectReason, disputes: [{userId, text, at, closed}], createdAt, updatedAt?}`.
+- **Incident** (ДТП и повреждения, основа будущей автотеки) `{id, vin, plate?: "0123AB01" (госномер латиницей без пробелов, необязательно; поиск по нему, но номер могут перевесить, главный ключ — VIN), kind, date: "YYYY-MM-DD", city, place, severity, parts: string[], airbags, repaired, evidence, docNo, desc, photos: string[], reporterId, reporterRole: "user"|"staff", status: "pending"|"verified"|"rejected", verifiedBy, verifiedAt, rejectReason, disputes: [{userId, text, at, closed}], createdAt, updatedAt?}`.
   - `kind`: accident (ДТП), damage, flood, fire, hail, theft, other. `severity`: minor, medium, severe.
   - `parts`: bumper_f, hood, fender_fl, fender_fr, door_fl, door_fr, door_rl, door_rr, fender_rl, fender_rr, roof, trunk, bumper_r (как схема кузова в карточке), плюс glass, frame, under, engine.
   - `airbags` и `repaired`: yes, no, unknown. `evidence`: none, photos, police (справка ГАИ), insurance, inspection (осмотр сотрудником, ставит только staff).

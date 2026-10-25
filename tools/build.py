@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Собирает витрину myauto.tj (VIN-расшифровка + калькулятор растаможки) из прототипа.
+"""Собирает витрину myauto.tj (VIN-расшифровка, калькулятор растаможки, проверка штрафов) из прототипа.
 
 Прототип prototype/index.html не меняется, результат пишется в public/index.html.
 Запуск:  python3 tools/build.py [VIN_API]
@@ -25,7 +25,7 @@ def sub(old, new, count=1):
     html = html.replace(old, new)
 
 
-DESC = "Бесплатная расшифровка VIN и калькулятор растаможки автомобиля в Таджикистане: пошлина, акциз, НДС и утильсбор по ставкам 2026 года."
+DESC = "Бесплатная расшифровка VIN, калькулятор растаможки и проверка штрафов ГАИ в Таджикистане: пошлина, акциз, НДС и утильсбор по ставкам 2026 года."
 TITLE = "myauto.tj: проверка VIN и калькулятор растаможки"
 
 # ---------- head: язык, title, SEO, превью для мессенджеров ----------
@@ -81,10 +81,10 @@ sub("function openInfo(k){const it=INFO[k];if(!it)return;sheet(`<h3>${it[0]}</h3
 # все VIN идут в честную расшифровку, демо-отчёты с выдуманной историей не показываются
 sub("if(!DEMO_VINS.has(vin)){REPORT=", "if(SHOWCASE||!DEMO_VINS.has(vin)){REPORT=")
 
-# только главная, VIN, отчёт и растаможка; остальные адреса ведут на главную
+# только главная, VIN, отчёт, растаможка и штрафы; остальные адреса ведут на главную
 sub('function route(){\n  const h=(location.hash||"").slice(1)||"home";',
     'function route(){\n  const h=(location.hash||"").slice(1)||"home";\n'
-    '  if(SHOWCASE&&!["home","vin","report","customs"].includes(h)){if(h!=="home")history.replaceState(null,"","#home");show("home");return;}')
+    '  if(SHOWCASE&&!["home","vin","report","customs","fines"].includes(h)){if(h!=="home")history.replaceState(null,"","#home");show("home");return;}')
 
 # без claude.ai нет ИИ: не отсылаем посетителя «открыть сайт в Claude»
 sub('D.aiNa?"ИИ-расшифровка работает, когда сайт открыт в Claude":""',
@@ -117,7 +117,8 @@ sub('<h1 data-i18n-html="hero">Машины Таджикистана <em>в од
     '      <div class="sc-only sc-cta"><button class="btn btn-accent" data-nav="vin" data-i18n="vin_check_btn">Проверить VIN</button>'
     '<button class="btn btn-line" data-nav="customs" data-i18n="sc_calc">Рассчитать растаможку</button></div>')
 sub('<span>VIN</span></button>',
-    '<span>VIN</span></button>\n  <button data-nav="customs" class="sc-only"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M14 11h2M8 15h2M14 15h2"/></svg><span data-i18n="nav_customs">Растаможка</span></button>')
+    '<span>VIN</span></button>\n  <button data-nav="customs" class="sc-only"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M14 11h2M8 15h2M14 15h2"/></svg><span data-i18n="nav_customs">Растаможка</span></button>\n'
+    '  <button data-nav="fines" class="sc-only"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h4"/><circle cx="17" cy="17" r="0.5"/></svg><span data-i18n="nav_fines">Штрафы</span></button>')
 sub('<button data-info="contacts">Контакты</button>',
     '<button data-info="contacts">Контакты</button><button class="sc-only" data-info="privacy" data-i18n="privacy">Конфиденциальность</button>')
 
@@ -137,9 +138,13 @@ body.showcase footer [data-nav=search],body.showcase footer [data-nav=dtp],body.
 body.showcase footer [data-info=rules],body.showcase footer [data-info=prices],
 body.showcase #v-vin .examples,body.showcase .dtp-vinlink,body.showcase #v-vin .stack>div:has(#geo),body.showcase #sec-dtp{display:none!important}
 body.showcase .vinpromo .demo{background:none;padding:0;align-content:center}
-body.showcase .tabbar{grid-template-columns:repeat(3,1fr)}
+body.showcase .tabbar{grid-template-columns:repeat(4,1fr)}
+body.showcase .fn-examples{display:none!important}
 body.showcase .tabbar .sc-only{display:flex!important}
 body.showcase footer .sc-only{display:block!important}
+body.showcase .svc-dtp{display:none!important}
+@media(max-width:899px){body.showcase .svcs .svc:first-child{grid-column:1/-1}}
+@media(min-width:900px){body.showcase .svcs{grid-template-columns:repeat(3,minmax(0,1fr))}}
 """
 # CSS только в основной <style> после <title>: первый блок — служебный сброс
 sub("/* Layout: sticky header,", CSS + "/* Layout: sticky header,")

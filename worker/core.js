@@ -2,6 +2,7 @@
 // Общая логика для Cloudflare Worker (worker.js) и обычного Node-сервера (server.js).
 // Здесь же SMS-коды для регистрации (otp.js): тот же сервер, те же правила CORS.
 import { handleOtp } from "./otp.js";
+import { fines } from "./fines.js";
 
 const VIN_RE = /^[A-HJ-NPR-Z0-9]{17}$/;
 
@@ -71,6 +72,7 @@ const json = (body, status, cors) =>
  * env: V17_USER, V17_PASS (секреты), V17_BASE (по умолчанию https://api.17vin.com:8443),
  *      ALLOWED_ORIGINS (через запятую, "*" для теста), ADMIN_KEY (для /balance).
  *      SMS-коды: см. otp.js (SMS_PROVIDER, OTP_SECRET, ключи провайдера).
+ *      Штрафы ГАИ: см. fines.js (FINES_URL, FINES_KEY, FINES_SOURCE, FINES_PER_IP).
  * deps: { md5(str)→hex, cache: {get(key), put(key,val)} | null, + для otp.js: hmac, sha256, digits, store }
  */
 export async function handle(req, env, deps) {
@@ -85,6 +87,8 @@ export async function handle(req, env, deps) {
   if (url.pathname.startsWith("/otp/")) return handleOtp(req, env, deps, (b, s) => json(b, s, cors));
   if (req.method !== "GET") return json({ error: "method" }, 405, cors);
   if (url.pathname === "/rate") return rate(env, deps, cors);
+  if (url.pathname === "/fines")
+    return fines(url, env, deps, req.headers.get("cf-connecting-ip") || req.headers.get("x-real-ip") || "?", (b, s) => json(b, s, cors));
   if (!env.V17_USER || !env.V17_PASS) return json({ error: "not_configured" }, 503, cors);
   const base = (env.V17_BASE || "https://api.17vin.com:8443").replace(/\/$/, "");
 
