@@ -776,6 +776,9 @@ a.seller{color:inherit;text-decoration:none;border-radius:12px}a.seller:hover b{
 .dtp-tags{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .dtp-tags .sevtag{font-size:11.5px;font-weight:800;padding:3px 8px;border-radius:6px;background:var(--surface-2);text-transform:uppercase;letter-spacing:.04em}
 .badge.warn{background:var(--warn-soft);color:var(--warn)}.badge.bad{background:var(--danger-soft);color:var(--danger)}.badge.dk{background:var(--ink);color:var(--surface)}
+.dtp-ids{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap}
+.dtp-plate{cursor:pointer;color:var(--ink);padding:0;font:inherit}
+.dtp-find-n{margin:0;grid-column:1/-1}
 .dtp-vin{justify-self:start;font-family:var(--mono);font-weight:700;overflow-wrap:anywhere;text-align:left;padding:0}
 .dtp-parts{display:flex;flex-wrap:wrap;gap:6px}.dtp-parts span{font-size:12.5px;background:var(--danger-soft);color:var(--danger);padding:3px 9px;border-radius:999px;font-weight:600}
 .dtp-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px;margin:0;font-size:13px}
@@ -2550,6 +2553,7 @@ const DTP=(()=>{
     get(id){return D.items.find(r=>r.id===id)||null},
     list(){return sorted(D.items.filter(canSee))},
     byVin(vin){return this.list().filter(r=>r.vin===vin)},
+    byPlate(p){return this.list().filter(r=>r.plate&&r.plate===p)},
     mine(){const m=me();return m?this.list().filter(r=>r.reporterId===m.id):[]},
     queue(){return staff()?D.items.filter(r=>r.status==="pending"||(r.status!=="rejected"&&openDisp(r).length)).sort((a,b)=>a.createdAt-b.createdAt):[]},
     stats(){const v=D.items.filter(r=>r.status!=="rejected");return{total:v.length,verified:v.filter(r=>r.status==="verified").length,pending:v.filter(r=>r.status==="pending").length,vins:new Set(v.map(r=>r.vin)).size}},
@@ -2560,7 +2564,8 @@ const DTP=(()=>{
       if(!/^\d{4}-\d{2}-\d{2}$/.test(rec.date||"")||rec.date>dtpToday()||rec.date<"1980-01-01")throw"date";
       const desc=String(rec.desc||"").trim();if(desc.length<10)throw"desc";
       const ev=DTP_EVID[rec.evidence]?rec.evidence:"none";if(ev==="inspection"&&!staff())throw"evid";
-      const c={vin,kind:rec.kind,date:rec.date,city:CITY[rec.city]?rec.city:"",place:String(rec.place||"").trim().slice(0,120),
+      const plate=fnClean(rec.plate);if(plate&&!/^[A-Z0-9]{4,10}$/.test(plate))throw"plate";
+      const c={vin,plate,kind:rec.kind,date:rec.date,city:CITY[rec.city]?rec.city:"",place:String(rec.place||"").trim().slice(0,120),
         severity:DTP_SEV[rec.severity]?rec.severity:"medium",parts:[...new Set(rec.parts||[])].filter(k=>DTP_PART[k]),
         airbags:DTP_BAG[rec.airbags]?rec.airbags:"unknown",repaired:DTP_REP[rec.repaired]?rec.repaired:"unknown",
         evidence:ev,docNo:String(rec.docNo||"").trim().slice(0,60),desc:desc.slice(0,1500),photos:(rec.photos||[]).slice(0,6)};
@@ -2579,7 +2584,7 @@ const DTP=(()=>{
     exportJSON(){return JSON.stringify({format:"myauto.incidents/1",exportedAt:new Date().toISOString(),items:D.items},null,2)}
   };
 })();
-let DTPVIN="",DTPTAB="recent",DTPPH=[];
+let DTPVIN="",DTPPLATE="",DTPTAB="recent",DTPPH=[];
 function dtpRefresh(){if(VIEW==="dtp")renderDtp();else if(VIEW==="report")renderReport();else if(VIEW==="me")renderMe();else if(VIEW==="car")renderCar(CURCAR);}
 const dtpDate=s=>{const[y,m,d]=String(s).split("-").map(Number);return new Date(y,m-1,d).toLocaleDateString(LANG==="ru"?"ru-RU":"tg-TJ",{day:"numeric",month:"long",year:"numeric"})};
 const dtpN=n=>LANG==="ru"?n+" "+(n%10===1&&n%100!==11?"запись":n%10>=2&&n%10<=4&&(n%100<10||n%100>=20)?"записи":"записей"):n+" сабт";
@@ -2603,7 +2608,7 @@ function dtpCard(r,o={}){
     <div class="dtp-body">
       <div class="dtp-tags"><span class="badge dk">${DTP_KIND[r.kind][L()]}</span><span class="sevtag ${r.severity==="severe"?"s":r.severity==="medium"?"l":""}">${DTP_SEV[r.severity][L()]}</span>${dtpStatus(r)}${open.length?`<span class="badge warn">${R("Оспорено","Эътироз")}: ${open.length}</span>`:""}</div>
       <h3>${dtpDate(r.date)}${r.city&&CITY[r.city]?" · "+CITY[r.city][L()]:""}${r.place?", "+esc(r.place):""}</h3>
-      ${o.noVin?"":`<button class="link dtp-vin" data-dtpvin="${r.vin}">${r.vin}</button>`}
+      ${o.noVin&&!r.plate?"":`<div class="dtp-ids">${o.noVin?"":`<button class="link dtp-vin" data-dtpvin="${r.vin}">${r.vin}</button>`}${r.plate?`<button class="plate dtp-plate" data-dtpplate="${r.plate}" aria-label="${R("Госномер","Рақами давлатӣ")} ${esc(fnPlateFmt(r.plate))}"><b>${esc(fnPlateFmt(r.plate))}</b></button>`:""}</div>`}
       <p>${esc(r.desc)}</p>
       ${r.parts.length?`<div class="dtp-parts">${r.parts.map(k=>`<span>${DTP_PART[k][L()]}</span>`).join("")}</div>`:""}
       ${r.photos.length?`<div class="pths">${r.photos.map((s,i)=>`<button type="button" class="pth" data-dtpph="${r.id}:${i}" aria-label="${R("Фото","Акс")} ${i+1}"><img src="${s}" alt=""></button>`).join("")}</div>`:""}
@@ -2619,9 +2624,11 @@ function dtpCard(r,o={}){
 function renderDtp(){
   const s=DTP.stats(),st=DTP.staff(),m=API.me(),q=DTP.queue();
   if(DTPTAB==="queue"&&!st) DTPTAB="recent"; if(DTPTAB==="mine"&&!m) DTPTAB="recent";
-  const list=DTPVIN?DTP.byVin(DTPVIN):DTPTAB==="mine"?DTP.mine():DTPTAB==="queue"?q:DTP.list().slice(0,60);
+  if(DTPVIN)DTPPLATE="";
+  const list=DTPVIN?DTP.byVin(DTPVIN):DTPPLATE?DTP.byPlate(DTPPLATE):DTPTAB==="mine"?DTP.mine():DTPTAB==="queue"?q:DTP.list().slice(0,60);
   const tabs=[["recent",R("Последние","Охирин")]];if(m)tabs.push(["mine",R("Мои","Аз они ман")]);if(st)tabs.push(["queue",R("На проверке","Дар санҷиш")+" · "+q.length]);
-  const empty=DTPVIN?R("По этому VIN в базе myauto.tj записей нет. Это не значит, что машина не была в ДТП: база только начала собираться.","Аз рӯи ин VIN сабт нест. Ин маънои онро надорад, ки мошин садама надидааст.")
+  const empty=DTPPLATE?R("По этому госномеру в базе myauto.tj записей нет. Номер указывают не во всех записях, поэтому надёжнее искать по VIN.","Аз рӯи ин рақам сабт нест. Аз рӯи VIN ҷустан боэътимодтар аст.")
+    :DTPVIN?R("По этому VIN в базе myauto.tj записей нет. Это не значит, что машина не была в ДТП: база только начала собираться.","Аз рӯи ин VIN сабт нест. Ин маънои онро надорад, ки мошин садама надидааст.")
     :DTPTAB==="mine"?R("Вы ещё не добавляли записей.","Шумо ҳоло сабт илова накардаед.")
     :DTPTAB==="queue"?R("Всё проверено, очередь пуста.","Ҳама санҷида шуд.")
     :R("Записей пока нет. Добавьте первое ДТП или повреждение, о котором знаете точно.","Ҳоло сабт нест. Аввалин садамаро илова кунед.");
@@ -2631,11 +2638,14 @@ function renderDtp(){
       <div style="display:grid;gap:8px;min-width:0"><h1>${R("ДТП и повреждения","Садама ва осеб")}</h1>
         <p class="muted">${R("База происшествий по VIN, которую собирают пользователи и сотрудники myauto.tj. Из неё вырастет местная автотека: история машин, купленных и проданных в Таджикистане.","Базаи ҳодисаҳо аз рӯи VIN, ки корбарон ва кормандони myauto.tj ҷамъ мекунанд.")}</p></div>
       <button class="btn btn-accent" data-dtpadd="${DTPVIN}">${t("dtp_add")}</button>
-      <form class="vininput dtp-find" id="dtpfind"><input id="dtp-q" maxlength="17" autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="VIN, 17 ${R("символов","аломат")}" aria-label="VIN" value="${DTPVIN}"><button class="btn btn-brand">${R("Найти по VIN","Ҷустан")}</button></form>
+      <form class="vininput dtp-find" id="dtpfind"><input id="dtp-q" maxlength="17" autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="${R("VIN или госномер","VIN ё рақами давлатӣ")}" aria-label="${R("VIN или госномер","VIN ё рақами давлатӣ")}" value="${DTPVIN||fnPlateFmt(DTPPLATE)}"><button class="btn btn-brand">${R("Найти","Ҷустан")}</button></form>
+      <p class="note dtp-find-n">${R("VIN — 17 символов, госномер — например 0123 AB 01","VIN — 17 аломат, рақам — масалан 0123 AB 01")}</p>
     </div>
     <div class="kpis dtp-kpis"><div><b>${s.total}</b><span>${R("записей","сабт")}</span></div><div><b>${s.verified}</b><span>${R("подтверждено","тасдиқ шуд")}</span></div><div><b>${s.pending}</b><span>${R("на проверке","дар санҷиш")}</span></div><div><b>${s.vins}</b><span>${R("машин по VIN","мошин")}</span></div></div>
     <div class="alert warn"><span class="sev warn" style="margin-top:6px"></span><div><b>${R("Как читать записи.","Чӣ тавр хондан.")}</b> ${R("«Не проверено» — со слов пользователя, сотрудник ещё не сверил фото и документы. «Подтверждено» — сверено сотрудником myauto.tj. Владелец машины может оспорить запись.","«Санҷида нашуд» — аз рӯи гуфтори корбар. «Тасдиқ шуд» — корманди myauto.tj санҷидааст.")}</div></div>
     ${DTPVIN?`<div class="row-head" style="margin:0"><h2>${R("Записи по VIN","Сабтҳо аз рӯи VIN")} <span class="mono dtp-h-vin">${DTPVIN}</span></h2><button class="link" data-dtpvin="">${R("Все записи","Ҳама")}</button></div>`
+      :DTPPLATE?`<div class="row-head" style="margin:0"><h2>${R("Записи по госномеру","Сабтҳо аз рӯи рақам")} <span class="plate"><b>${esc(fnPlateFmt(DTPPLATE))}</b></span></h2><button class="link" data-dtpvin="">${R("Все записи","Ҳама")}</button></div>
+        ${list.length?`<p class="note" style="margin:0">${R("Номер могут перевесить на другую машину. Сверьте VIN в записи с VIN машины.","Рақамро ба мошини дигар гузоштан мумкин. VIN-ро муқоиса кунед.")}</p>`:""}`
       :`<div class="seg dtp-tabs" role="tablist">${tabs.map(([k,l])=>`<button role="tab" aria-selected="${k===DTPTAB}" class="${k===DTPTAB?"on":""}" data-dtptab="${k}">${l}</button>`).join("")}</div>`}
     <div class="dtp-list">${list.length?list.map(r=>dtpCard(r,{noVin:!!DTPVIN})).join(""):`<div class="empty">${empty}${DTPVIN?`<div style="margin-top:12px"><button class="btn btn-ghost" data-dtpadd="${DTPVIN}">${t("dtp_add")}</button></div>`:""}</div>`}</div>
     ${st?`<div class="panel"><b>${R("Режим сотрудника","Реҷаи корманд")}</b><p class="note" style="margin:0">${R("Ваши записи сразу подтверждены. Записи пользователей проверяйте по фото, справке ГАИ или осмотру. Выгрузка нужна, чтобы перенести базу на сервер.","Сабтҳои шумо дарҳол тасдиқ мешаванд.")}</p><div><button class="btn btn-ghost" data-dtpexport="1">⬇ ${R("Выгрузить базу (JSON)","Боргирии база (JSON)")}</button></div></div>`:""}
@@ -2645,13 +2655,14 @@ function renderDtp(){
 function drawDtpPh(){const b=$("#d-phs");if(b)b.innerHTML=DTPPH.map((s,i)=>`<div class="pth"><img src="${s}" alt=""><button type="button" data-dtpphdel="${i}" aria-label="${R("Убрать фото","Аксро нест кардан")}">×</button></div>`).join("")+(DTPPH.length<6?`<label class="pth add"><input type="file" id="d-photo" accept="image/*" multiple hidden>+ ${R("Фото","Акс")}</label>`:"")}
 function openDtp(id,vin){
   if(needAuth(R("Чтобы добавить ДТП, войдите. Запись связывается с вашим аккаунтом, анонимные записи не принимаем.","Барои илова кардан ворид шавед."),()=>openDtp(id,vin))) return;
-  const st=DTP.staff(),d=id?DTP.get(id):{vin:vin||"",kind:"accident",date:"",city:API.me().city,place:"",severity:"medium",parts:[],airbags:"unknown",repaired:"unknown",evidence:st?"inspection":"photos",docNo:"",desc:"",photos:[]};
+  const st=DTP.staff(),d=id?DTP.get(id):{vin:vin||"",plate:"",kind:"accident",date:"",city:API.me().city,place:"",severity:"medium",parts:[],airbags:"unknown",repaired:"unknown",evidence:st?"inspection":"photos",docNo:"",desc:"",photos:[]};
   if(!d) return;
   DTPPH=[...(d.photos||[])];
   const opt=(obj,cur)=>Object.keys(obj).filter(k=>k!=="inspection"||st||cur==="inspection").map(k=>`<option value="${k}" ${k===cur?"selected":""}>${obj[k][L()]}</option>`).join("");
   sheet(`<h3>${id?R("Изменить запись о ДТП","Тағйири сабт"):R("Добавить ДТП или повреждение","Илова кардани садама")}</h3>
     <form class="frm" data-f="dtp" ${id?`data-id="${id}"`:""} novalidate>
       ${field(R("VIN, 17 символов","VIN, 17 аломат"),inp("vin","XXXXXXXXXXXXXXXXX",`value="${esc(d.vin)}" maxlength="17" autocapitalize="characters" spellcheck="false" autocomplete="off" class="mono" required`))}
+      ${field(R("Госномер (необязательно)","Рақами давлатӣ (ихтиёрӣ)"),inp("plate","0123 AB 01",`value="${esc(fnPlateFmt(d.plate||""))}" maxlength="12" autocapitalize="characters" spellcheck="false" autocomplete="off" class="mono"`))}
       <div class="two">
         ${field(R("Что случилось","Чӣ шуд"),`<select name="kind">${opt(DTP_KIND,d.kind)}</select>`)}
         ${field(R("Дата","Сана"),`<input type="date" name="date" value="${esc(d.date)}" min="1980-01-01" max="${dtpToday()}" required>`)}
@@ -2676,9 +2687,10 @@ function openDtp(id,vin){
 }
 FORMS.dtp=f=>{
   const g=n=>f[n]?f[n].value:"";
-  const rec={id:f.dataset.id||null,vin:g("vin").trim().toUpperCase(),kind:g("kind"),date:g("date"),city:g("city"),place:g("place"),severity:g("severity"),
+  const rec={id:f.dataset.id||null,vin:g("vin").trim().toUpperCase(),plate:g("plate"),kind:g("kind"),date:g("date"),city:g("city"),place:g("place"),severity:g("severity"),
     parts:[...f.querySelectorAll('[name="parts"]:checked')].map(i=>i.value),airbags:g("airbags"),repaired:g("repaired"),evidence:g("evidence"),docNo:g("docNo"),desc:g("desc"),photos:DTPPH};
   const E={vin:[R("VIN: 17 символов, без букв I, O, Q","VIN: 17 аломат, бе I, O, Q"),"vin"],cd:[R("Контрольная цифра VIN не совпадает. Проверьте номер","Рақами назоратии VIN мувофиқ нест"),"vin"],
+    plate:[R("Госномер: только буквы и цифры, например 0123 AB 01","Рақам: танҳо ҳарф ва рақам"),"plate"],
     date:[R("Укажите дату: не в будущем и не раньше 1980 года","Санаро нависед"),"date"],desc:[R("Опишите, что случилось: от 10 символов","Аз 10 аломат нависед"),"desc"],
     dup:[R("Вы уже добавили запись по этому VIN на эту дату. Измените её вместо новой","Шумо аллакай ин сабтро илова кардаед"),"date"],
     evid:[R("Отметку «Осмотр сотрудником» ставит только сотрудник","Танҳо корманд"),"evidence"],owner:[R("Изменить можно только свою запись, пока она на проверке","Танҳо сабти худ")]};
@@ -2732,7 +2744,8 @@ function dtpPdfBlock(vin){
 document.addEventListener("click",async e=>{
   const T0=e.target;
   const ad=T0.closest("[data-dtpadd]"); if(ad){openDtp(null,ad.dataset.dtpadd);return;}
-  const vn=T0.closest("[data-dtpvin]"); if(vn){const v=vn.dataset.dtpvin;DTPVIN=v;nav(v?"dtp-"+v:"dtp");return;}
+  const vn=T0.closest("[data-dtpvin]"); if(vn){const v=vn.dataset.dtpvin;DTPVIN=v;DTPPLATE="";nav(v?"dtp-"+v:"dtp");return;}
+  const vp=T0.closest("[data-dtpplate]"); if(vp){DTPVIN="";DTPPLATE=vp.dataset.dtpplate;nav("dtp-n-"+DTPPLATE);return;}
   const tb=T0.closest("[data-dtptab]"); if(tb){DTPTAB=tb.dataset.dtptab;DTPVIN="";nav("dtp");return;}
   const ok=T0.closest("[data-dtpok]"); if(ok){try{DTP.verify(ok.dataset.dtpok);toast(R("Запись подтверждена","Сабт тасдиқ шуд"));dtpRefresh()}catch(err){toast(R("Только для сотрудников","Танҳо барои кормандон"))}return;}
   const rj=T0.closest("[data-dtprej]"); if(rj){sheet(`<h3>${R("Отклонить запись","Рад кардани сабт")}</h3><form class="frm" data-f="dtprej" data-id="${rj.dataset.dtprej}">${field(R("Причина, её увидит автор","Сабаб"),`<textarea name="text" rows="3" maxlength="300" required placeholder="${R("Например: фото не этой машины, дата не совпадает со справкой","Масалан: акс аз мошини дигар")}"></textarea>`)}<button class="btn btn-accent btn-block">${R("Отклонить","Рад кардан")}</button></form>`,R("Отклонить","Рад"));return;}
@@ -2747,9 +2760,12 @@ document.addEventListener("click",async e=>{
     if(cap){try{await cap.save({filename,data:blob});toast(R("Файл сохранён","Файл захира шуд"))}catch(err){if(err&&err.code!=="declined")toast(R("Не удалось сохранить","Захира нашуд"))}}
     else{const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();a.remove();}return;}
 });
-document.addEventListener("submit",e=>{if(e.target.id!=="dtpfind")return;e.preventDefault();const v=$("#dtp-q").value.trim().toUpperCase();
-  if(!/^[A-HJ-NPR-Z0-9]{17}$/.test(v)){toast(R("VIN: 17 символов, без букв I, O, Q","VIN: 17 аломат, бе I, O, Q"));$("#dtp-q").focus();return}DTPVIN=v;nav("dtp-"+v);});
-document.addEventListener("input",e=>{if(e.target.id==="dtp-q")e.target.value=e.target.value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g,"")});
+// одно поле: 17 символов — VIN, короче — госномер (кириллица в номере заменяется латиницей)
+document.addEventListener("submit",e=>{if(e.target.id!=="dtpfind")return;e.preventDefault();const v=fnClean($("#dtp-q").value);
+  if(/^[A-HJ-NPR-Z0-9]{17}$/.test(v)){DTPVIN=v;DTPPLATE="";nav("dtp-"+v);return}
+  if(/^[A-Z0-9]{4,10}$/.test(v)){DTPVIN="";DTPPLATE=v;nav("dtp-n-"+v);return}
+  toast(R("Введите VIN (17 символов, без I, O, Q) или госномер, например 0123 AB 01","VIN (17 аломат) ё рақами давлатӣ, масалан 0123 AB 01"));$("#dtp-q").focus();});
+document.addEventListener("input",e=>{if(e.target.id==="dtp-q"||e.target.name==="plate"&&e.target.closest('[data-f="dtp"]'))e.target.value=e.target.value.toUpperCase().replace(/[АВЕКМНОРСТХУ]/g,c=>FN_LAT[c]).replace(/[^A-Z0-9 ]/g,"")});
 document.addEventListener("change",async e=>{if(e.target.id!=="d-photo")return;const files=[...e.target.files].slice(0,6-DTPPH.length);
   for(const f of files){try{DTPPH.push(await photoData(f))}catch(err){toast(R("Не удалось прочитать фото","Аксро хондан нашуд"))}}drawDtpPh();});
 
@@ -3067,7 +3083,8 @@ function route(){
   const h=(location.hash||"").slice(1)||"home";
   if(/^car-\d+$/.test(h)){CURCAR=+h.slice(4);show("car");}
   else if(/^seller-\w+$/.test(h)){SELLERID=h.slice(7);show("seller");}
-  else if(h==="dtp"||/^dtp-[A-HJ-NPR-Z0-9]{17}$/.test(h)){DTPVIN=h.slice(4);show("dtp");}
+  else if(h==="dtp"||/^dtp-[A-HJ-NPR-Z0-9]{17}$/.test(h)){DTPVIN=h.slice(4);DTPPLATE="";show("dtp");}
+  else if(/^dtp-n-[A-Z0-9]{4,10}$/.test(h)){DTPVIN="";DTPPLATE=h.slice(6);show("dtp");}
   else if(h==="report") REPORT?show("report"):show("vin");
   else if(["home","search","vin","customs","fines","favs","me","admin"].includes(h)) show(h);
   else show("home");
