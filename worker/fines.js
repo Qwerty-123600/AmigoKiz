@@ -1,5 +1,5 @@
 // Штрафы ГАИ по госномеру и техпаспорту. Своей базы нет: запрос уходит провайдеру из FINES_URL.
-// FINES_URL — адрес с подстановками {plate} и {doc}, FINES_KEY (секрет) уходит заголовком Authorization: Bearer.
+// FINES_URL — адрес с подстановкой {plate} (и {doc}, если провайдер всё же требует техпаспорт; сайт его не спрашивает), FINES_KEY (секрет) уходит заголовком Authorization: Bearer.
 // Пока FINES_URL не задан, отвечаем not_configured, и сайт честно пишет, что база не подключена.
 const PLATE_RE = /^[A-Z0-9]{5,10}$/;
 const DOC_RE = /^[A-Z0-9]{6,14}$/;
@@ -24,9 +24,9 @@ export async function fines(url, env, deps, ip, json) {
   if (!env.FINES_URL) return json({ error: "not_configured" }, 503);
   const plate = (url.searchParams.get("plate") || "").toUpperCase();
   const doc = (url.searchParams.get("doc") || "").toUpperCase();
-  if (!PLATE_RE.test(plate) || !DOC_RE.test(doc)) return json({ error: "bad_input" }, 400);
+  if (!PLATE_RE.test(plate) || (doc && !DOC_RE.test(doc))) return json({ error: "bad_input" }, 400);
 
-  // Ключ кэша — хэш, чтобы номер и техпаспорт не лежали в KV открытым текстом.
+  // Ключ кэша — хэш, чтобы номер не лежал в KV открытым текстом.
   const key = `fines:${await deps.sha256(plate + "|" + doc)}`;
   const hit = deps.cache && (await deps.cache.get(key));
   if (hit) return json({ ...hit, cached: true }, 200);
@@ -40,7 +40,7 @@ export async function fines(url, env, deps, ip, json) {
 
   let r, j;
   try {
-    r = await fetch(env.FINES_URL.replace("{plate}", plate).replace("{doc}", doc), {
+    r = await fetch(env.FINES_URL.replace("{plate}", plate).replace("{doc}", encodeURIComponent(doc)), {
       headers: env.FINES_KEY ? { authorization: `Bearer ${env.FINES_KEY}`, accept: "application/json" } : { accept: "application/json" },
       signal: AbortSignal.timeout(12000),
     });
