@@ -896,6 +896,11 @@ button.pth{border:0;padding:0;cursor:zoom-in}
 .adm-log>div{display:grid;grid-template-columns:110px minmax(0,1fr);gap:10px;padding:9px 14px;border-bottom:1px solid var(--line);font-size:14px;overflow-wrap:anywhere}
 .adm-log>div:last-child{border-bottom:0}
 @media(max-width:520px){.adm-log>div{grid-template-columns:minmax(0,1fr);gap:2px}}
+/* валюта: переключатель виден и на телефоне, цена в объявлении — в сомони или долларах */
+.cur-btn{display:none;width:auto;min-width:40px;padding:0 9px;border-radius:999px;font-weight:800;font-size:13px}
+@media(max-width:759px){.tools{gap:5px}.tools .seg button{min-width:30px;padding:0 7px}.curseg{display:none}.cur-btn{display:grid}}
+@media(max-width:380px){.logo{font-size:18px}.tools .icon-btn{width:36px;height:36px}}
+.pricecur{display:flex;gap:6px}.pricecur input{flex:1;min-width:0}.pricecur select{width:auto;flex:none;padding:0 10px}
 /* поиск по тексту в каталоге и плитки сервисов на главной */
 .sbar{position:relative;display:flex;align-items:center;margin:0 0 12px}
 .sbar svg{position:absolute;left:14px;width:20px;height:20px;color:var(--muted);pointer-events:none}
@@ -966,7 +971,8 @@ button.pth{border:0;padding:0;cursor:zoom-in}
     </nav>
     <div class="tools">
       <div class="seg" role="group" aria-label="Язык"><button data-lang="tj">TJ</button><button data-lang="ru" class="on">RU</button></div>
-      <div class="seg hide-sm" role="group" aria-label="Валюта"><button data-cur="TJS">сом.</button><button data-cur="USD" class="on">$</button></div>
+      <div class="seg curseg" role="group" aria-label="Валюта"><button data-cur="TJS" class="on">сом.</button><button data-cur="USD">$</button></div>
+      <button class="icon-btn cur-btn" data-curtoggle="1" aria-label="Валюта: сомони или доллары">сом.</button>
       <button class="icon-btn" id="theme" aria-label="Тёмная или светлая тема"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 14A8 8 0 1 1 10 4a6 6 0 0 0 10 10z"/></svg></button>
       <button class="icon-btn" id="acct" aria-label="Войти"></button>
       <button class="btn btn-accent hide-sm" id="post-btn"><span class="pl" data-i18n="post">+ Подать объявление</span><span class="ps">+ <span data-i18n="post_s">Подать</span></span></button>
@@ -1368,7 +1374,7 @@ const REPORTS={
 };
 
 /* ---------- state ---------- */
-let LANG="ru",CUR="USD",GEO="china",LISTVIEW=false,CURCAR=1,REPORT=null,FAVS=new Set(),VIEW="home";
+let LANG="ru",CUR="TJS",GEO="china",LISTVIEW=false,CURCAR=1,REPORT=null,FAVS=new Set(),VIEW="home";
 const L=()=>LANG==="ru"?0:1;
 const t=k=>(T[k]||[k,k])[L()];
 const $=s=>document.querySelector(s);
@@ -1982,7 +1988,7 @@ function openPost(editId){
       ${field(R("Модель","Модел"),inp("m","Camry",`value="${v("m")}" required maxlength="40"`))}
       ${field(R("Год","Сол"),sel("y",yrs))}
       ${field(R("Пробег, км","Масофа, км"),inp("km","86000",`value="${v("km")}" inputmode="numeric" required`))}
-      ${field(R("Цена, $","Нарх, $"),inp("usd","21500",`value="${v("usd")}" inputmode="numeric" required`))}
+      ${field(R("Цена","Нарх"),`<div class="pricecur">${inp("usd",CUR==="USD"?"21500":"200000",`value="${d.usd?(CUR==="USD"?d.usd:Math.round(d.usd*RATE/100)*100):""}" inputmode="numeric" required`)}<select name="pcur" aria-label="${R("Валюта","Асъор")}"><option value="TJS" ${CUR==="TJS"?"selected":""}>сом.</option><option value="USD" ${CUR==="USD"?"selected":""}>$</option></select></div>`)}
       ${field(R("Город","Шаҳр"),citySel(d.city||me.city))}
       ${field(R("Топливо","Сӯзишворӣ"),sel("fuel",opt(FUEL,d.fuel||"petrol")))}
       ${field(R("Двигатель","Муҳаррик"),inp("eng","2.5",`value="${v("eng")}" maxlength="20"`))}
@@ -2004,11 +2010,12 @@ function openPost(editId){
 function sendPost(f){
   const num=n=>+String(f[n].value).replace(/\D/g,"")||0, vin=f.vin.value.trim().toUpperCase();
   if(!f.m.value.trim()){toast(R("Укажите модель","Моделро нависед"));f.m.focus();return}
-  if(num("usd")<300){toast(R("Укажите цену в долларах","Нархро бо доллар нависед"));f.usd.focus();return}
+  const pusd=f.pcur&&f.pcur.value==="TJS"?Math.round(num("usd")/RATE):num("usd");
+  if(pusd<300){toast(R("Укажите цену: от 300 $ или 2 800 сом.","Нархро нависед: аз 300 $ ё 2 800 сом."));f.usd.focus();return}
   if(vin&&(vin.length!==17||/[IOQ]/.test(vin)||!/^[A-HJ-NPR-Z0-9]{17}$/.test(vin))){toast(R("VIN: 17 символов, без букв I, O, Q","VIN: 17 аломат, бе I, O, Q"));f.vin.focus();return}
   if(vin){const info=vinInfo(vin);if(info.cd===false){toast(R("У VIN не сходится контрольная цифра. Проверьте номер","Рақами санҷишии VIN мувофиқ нест"));f.vin.focus();return}}
   if(!POSTPH.length){toast(R("Добавьте хотя бы одно фото","Ақаллан як акс илова кунед"));return}
-  const l={b:f.b.value,m:f.m.value.trim(),y:+f.y.value,km:num("km"),usd:num("usd"),city:f.city.value,fuel:f.fuel.value,eng:f.eng.value.trim()||"—",box:f.box.value,drive:f.drive.value,body:f.body.value,cus:f.cus.value,hp:num("hp")||"",vin:vin||"",desc:f.desc.value.trim(),photos:POSTPH};
+  const l={b:f.b.value,m:f.m.value.trim(),y:+f.y.value,km:num("km"),usd:pusd,city:f.city.value,fuel:f.fuel.value,eng:f.eng.value.trim()||"—",box:f.box.value,drive:f.drive.value,body:f.body.value,cus:f.cus.value,hp:num("hp")||"",vin:vin||"",desc:f.desc.value.trim(),photos:POSTPH};
   if(f.dataset.id) l.id=+f.dataset.id;
   const saved=API.saveListing(l); if(!saved) return;
   $("#overlay").innerHTML=""; syncListings(); renderHome(); renderSearch();
@@ -3113,6 +3120,7 @@ function applyLang(){
   $("#s-q").placeholder=t("s_q_ph");
   $$("[data-lang]").forEach(b=>b.classList.toggle("on",b.dataset.lang===LANG));
   $$("[data-cur]").forEach(b=>b.classList.toggle("on",b.dataset.cur===CUR));
+  $$(".cur-btn").forEach(b=>b.textContent=curSym());
   syncListings(); fillSelects(); renderHome(); renderSearch(); onVin(); calcInit(); calcCompute();
   if(VIEW==="car") renderCar(CURCAR);
   if(VIEW==="report") renderReport();
@@ -3195,6 +3203,7 @@ document.addEventListener("click",e=>{
   const br=T0.closest("[data-brand]"); if(br){$("#s-brand").value=CARS.some(c=>c.b===br.dataset.brand)?br.dataset.brand:"";nav("search");return;}
   const n=T0.closest("[data-nav]"); if(n){ if(n.dataset.fuel) $$("#s-fuel input").forEach(i=>i.checked=(i.value==="ev"||i.value==="hybrid")); nav(n.dataset.nav); return;}
   const lg=T0.closest("[data-lang]"); if(lg){LANG=lg.dataset.lang;store("lang",LANG);applyLang();return;}
+  const ct=T0.closest("[data-curtoggle]"); if(ct){CUR=CUR==="USD"?"TJS":"USD";store("cur",CUR);$("#s-pmin").value=$("#s-pmax").value="";applyLang();toast(CUR==="USD"?R("Цены в долларах","Нархҳо бо доллар"):R("Цены в сомони","Нархҳо бо сомонӣ"));return;}
   const cu=T0.closest("[data-cur]"); if(cu){CUR=cu.dataset.cur;store("cur",CUR);$("#s-pmin").value=$("#s-pmax").value="";applyLang();return;}
 });
 $("#qform").addEventListener("submit",e=>{e.preventDefault();
@@ -3227,7 +3236,7 @@ document.addEventListener("change",async e=>{if(e.target.id!=="p-photo")return;c
 $("#theme").onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme?r.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;r.dataset.theme=dark?"light":"dark";store("theme",r.dataset.theme);};
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){$("#overlay").innerHTML="";$("#filters").classList.remove("open");}});
 
-LANG=load("lang")==="tj"?"tj":"ru"; CUR=load("cur")==="TJS"?"TJS":"USD";
+LANG=load("lang")==="tj"?"tj":"ru"; CUR=load("cur")==="USD"?"USD":"TJS";
 const th=load("theme"); if(th==="dark"||th==="light") document.documentElement.dataset.theme=th;
 (load("favs")||"").split(",").filter(Boolean).forEach(x=>FAVS.add(+x));
 $("#vin").value=load("vin")||(SHOWCASE?"":"5YJ3E1EA7KF317000");
