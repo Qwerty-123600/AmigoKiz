@@ -11,7 +11,7 @@
     "ALLOWED_ORIGINS": "https://myauto.myauto-tj.workers.dev,https://myauto.tj,https://www.myauto.tj",
     "SMS_PROVIDER": "demo",
     "WA_PROVIDER": "demo",
-    "TG_PROVIDER": "demo",
+    "TG_PROVIDER": "telegram",
     "VIN_PER_IP": "30",
     "VIN_PER_DAY": "300"
   }

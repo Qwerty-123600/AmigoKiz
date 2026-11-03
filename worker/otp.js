@@ -2,7 +2,7 @@
 // Ключи провайдеров живут только здесь, в секретах сервера.
 //
 // Канал выбирает пользователь: /otp/send {channel:"whatsapp"|"telegram"|"sms"}. У каждого канала своя цепочка
-// провайдеров: WA_PROVIDER, TG_PROVIDER, SMS_PROVIDER. Сайт и приложение сейчас предлагают только WhatsApp и Telegram.
+// провайдеров: WA_PROVIDER, TG_PROVIDER, SMS_PROVIDER. Сайт и приложение сейчас используют только Telegram.
 // env: SMS_PROVIDER  "osonsms" | "telegram" | "twilio" | "demo" или цепочка через запятую ("telegram,osonsms":
 //                    сначала Telegram, если у номера нет Telegram — SMS). Пусто = "demo": код возвращается в ответе.
 //      OTP_SECRET    длинная случайная строка, обязательна для настоящей отправки.

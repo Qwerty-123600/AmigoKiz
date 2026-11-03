@@ -704,11 +704,7 @@ a.seller{color:inherit;text-decoration:none;border-radius:12px}a.seller:hover b{
 .af-cards label>span{display:grid;gap:2px;padding:12px;border:1.5px solid var(--line);border-radius:14px;background:var(--surface);transition:border-color .15s,background .15s;height:100%}
 .af-cards svg{width:22px;height:22px;color:var(--muted);margin-bottom:4px}.af-cards b{font-size:14.5px}.af-cards small{font-size:12px;color:var(--muted)}
 .af-cards input:checked+span{border-color:var(--brand);background:var(--brand-soft)}.af-cards input:checked+span svg{color:var(--brand)}
-.af-chan{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--surface-2);border-radius:14px;padding:4px}
-.af-chan label{position:relative;cursor:pointer}.af-chan input{position:absolute;opacity:0;inset:0}
-.af-chan label>span{display:flex;align-items:center;justify-content:center;gap:7px;min-height:42px;border-radius:11px;font-weight:700;font-size:14.5px;color:var(--muted);transition:background .15s,color .15s}
-.af-chan svg{width:18px;height:18px}.af-chan input:checked+span{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
-.af-chan input[value=whatsapp]:checked+span svg{color:#1da851}.af-chan input[value=telegram]:checked+span svg{color:#229ed9}.af-chan input:focus-visible+span{box-shadow:0 0 0 4px color-mix(in srgb,var(--brand) 18%,transparent)}
+.btn-tg{display:flex;align-items:center;justify-content:center;gap:8px}.btn-tg svg{width:20px;height:20px}
 .af-cards input:focus-visible+span{box-shadow:0 0 0 4px color-mix(in srgb,var(--brand) 18%,transparent)}
 .af-agree{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;align-items:center;font-size:14px;cursor:pointer}
 .af-agree input{position:absolute;opacity:0;width:1px;height:1px}
@@ -1671,7 +1667,6 @@ const IC={
   star:'<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
   heart:'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
-  wa:'<path d="M3.5 20.5l1.3-4A8.5 8.5 0 1 1 8 19.6z"/><path d="M9 8.5c0 3.5 3 6.5 6.5 6.5l1-1.6-2-1-1 .8a5 5 0 0 1-2.2-2.2l.8-1-1-2z"/>',
   tg:'<path d="M21 4L3 11.2l6 2.3 2.3 6.5 3.4-4.2 5 3.7z"/><path d="M9 13.5l12-9.5"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>'};
 const ic=(k,c="")=>`<svg class="${c}" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[k]}</svg>`;
 const fmtPhone9=d=>{d=d.replace(/\D/g,"").replace(/^992(?=\d{9})/,"").slice(0,9);return[d.slice(0,2),d.slice(2,5),d.slice(5,7),d.slice(7,9)].filter(Boolean).join(" ")};
@@ -1680,31 +1675,27 @@ const phoneBox=v=>afield("phone",R("Телефон","Телефон"),"",`<span 
 function fErr(f,name,msg){const box=f.querySelector(`[data-af="${name}"]`);if(!box)return toast(msg);box.classList.add("bad");box.querySelector(".af-err").textContent=msg;const i=box.querySelector("input,select");if(i){i.setAttribute("aria-invalid","true");i.focus();}}
 function fBusy(f,on){const b=f.querySelector(".af-submit");if(b){b.disabled=on;b.classList.toggle("busy",on);}}
 let CODE_T=null;
-/* Вход и регистрация без пароля: код в WhatsApp или Telegram (PENDING.channel). Отправляет сервер (worker/otp.js), ключи на сайт не попадают.
+/* Вход и регистрация без пароля: только код из Telegram (Telegram Gateway). Отправляет сервер (worker/otp.js), токен на сайт не попадает.
    Пока адрес сервера пуст, код создаётся в браузере и показывается на экране, как в прототипе. */
-const CH_NAME=ch=>ch==="telegram"?"Telegram":"WhatsApp",CH_ALT=ch=>ch==="telegram"?"whatsapp":"telegram";
 const OTP_API=()=>VIN_API;
 const OTP_ERR=j=>j.error==="too_soon"||j.error==="too_many"?R("Повторно отправить код можно через ","Рамзи навро баъди ")+(j.wait>90?Math.ceil(j.wait/60)+R(" мин"," дақ"):j.wait+R(" с"," с")):
   j.error==="wrong_code"?(j.left>0?R("Код не подходит. Осталось попыток: ","Рамз нодуруст. Боқӣ: ")+j.left:R("Слишком много попыток, запросите новый код","Кӯшиш зиёд шуд, рамзи нав гиред")):
   j.error==="expired"?R("Код устарел, запросите новый","Рамз кӯҳна шуд, рамзи нав гиред"):j.error==="too_many_tries"?R("Слишком много попыток, запросите новый код","Кӯшиш зиёд шуд, рамзи нав гиред"):
-  j.error==="sms_failed"?R("Не получилось отправить в ","Фиристода нашуд ба ")+CH_NAME(PENDING&&PENDING.channel)+R(". Есть ли он на этом номере? Попробуйте ",". Санҷед ")+CH_NAME(CH_ALT(PENDING&&PENDING.channel)):
-  j.error==="channel_off"?CH_NAME(j.channel)+R(" пока не подключён, выберите "," ҳоло пайваст нест, интихоб кунед: ")+CH_NAME(CH_ALT(j.channel)):R("Сервер недоступен, проверьте интернет","Сервер дастрас нест");
+  j.error==="sms_failed"?R("Не получилось отправить код в Telegram. Проверьте, что на этом номере есть Telegram","Рамз ба Telegram фиристода нашуд. Санҷед, ки дар ин рақам Telegram ҳаст"):
+  j.error==="channel_off"||j.error==="not_configured"?R("Вход через Telegram пока не настроен","Воридшавӣ тавассути Telegram ҳоло танзим нашудааст"):R("Сервер недоступен, проверьте интернет","Сервер дастрас нест");
 async function otpPost(path,body){let j={};try{const r=await fetch(OTP_API()+path,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});j=await r.json()}catch(e){}
   if(!j.ok)throw OTP_ERR(j);return j}
 /* Заполняет PENDING.code (только в демо: показать на экране), PENDING.via и PENDING.wait. Ошибка — строка для пользователя. */
 async function otpSend(purpose){
-  PENDING.purpose=purpose;PENDING.channel=PENDING.channel==="telegram"?"telegram":"whatsapp";
+  PENDING.purpose=purpose;
   if(!OTP_API()){Object.assign(PENDING,{code:String(1000+Math.floor(Math.random()*9000)),via:"demo",wait:30});return}
-  const j=await otpPost("/otp/send",{phone:PENDING.phone,purpose,channel:PENDING.channel});
+  const j=await otpPost("/otp/send",{phone:PENDING.phone,purpose,channel:"telegram"});
   Object.assign(PENDING,{code:j.demo?j.code:"",via:j.via,wait:j.resendIn||60});
 }
 async function otpCheck(code){
-  if(!OTP_API()){if(code!==PENDING.code)throw R("Код не подходит, проверьте ","Рамз нодуруст, санҷед: ")+CH_NAME(PENDING.channel);return}
+  if(!OTP_API()){if(code!==PENDING.code)throw R("Код не подходит, проверьте Telegram","Рамз нодуруст, Telegram-ро санҷед");return}
   PENDING.ticket=(await otpPost("/otp/verify",{phone:PENDING.phone,code})).ticket;
 }
-const chanBox=cur=>`<div class="af" data-af="channel"><span class="af-lab">${R("Куда прислать код","Рамзро ба куҷо фиристем")}</span><div class="af-chan" role="radiogroup">
-  <label><input type="radio" name="channel" value="whatsapp" ${cur!=="telegram"?"checked":""}><span>${ic("wa")}WhatsApp</span></label>
-  <label><input type="radio" name="channel" value="telegram" ${cur==="telegram"?"checked":""}><span>${ic("tg")}Telegram</span></label></div></div>`;
 function openAuth(mode,reason,after){
   if(after!==undefined) AFTER=after;
   clearInterval(CODE_T);
@@ -1712,9 +1703,9 @@ function openAuth(mode,reason,after){
   if(mode!=="code"&&mode!=="signup") mode="phone";
   const perks=[["star",R("Рейтинг и отзывы о вас","Рейтинг ва шарҳҳо")],["plus",R("Объявления за пару минут","Эълон дар чанд дақиқа")],["heart",R("Избранное на всех устройствах","Баргузида дар ҳама дастгоҳҳо")]];
   let body="";
-  if(mode==="phone") body=`<h2 class="auth-h">${R("Вход и регистрация","Ворид ва бақайдгирӣ")}</h2><p class="auth-sub">${R("Пришлём код в WhatsApp или Telegram. Пароль не нужен.","Рамзро ба WhatsApp ё Telegram мефиристем. Парол лозим нест.")}</p>${why}
-    <form class="aform" data-f="phone" novalidate>${phoneBox(PENDING&&PENDING.phone?PENDING.phone.slice(4):"")}${chanBox(PENDING&&PENDING.channel)}
-      <button class="btn btn-accent btn-block af-submit"><span>${R("Получить код","Гирифтани рамз")}</span></button></form>
+  if(mode==="phone") body=`<h2 class="auth-h">${R("Вход и регистрация","Ворид ва бақайдгирӣ")}</h2><p class="auth-sub">${R("Пришлём код в Telegram. Пароль не нужен.","Рамзро ба Telegram мефиристем. Парол лозим нест.")}</p>${why}
+    <form class="aform" data-f="phone" novalidate>${phoneBox(PENDING&&PENDING.phone?PENDING.phone.slice(4):"")}
+      <button class="btn btn-accent btn-block af-submit btn-tg">${ic("tg")}<span>${R("Получить код в Telegram","Рамз дар Telegram")}</span></button></form>
     <p class="auth-alt">${R("Впервые на myauto.tj? Аккаунт создадим после кода.","Бори аввал? Аккаунт баъди рамз сохта мешавад.")}</p>`;
   else if(mode==="signup") body=`<div class="auth-steps"><span class="done">✓</span><i class="on"></i><span class="on">2</span></div><h2 class="auth-h">${R("Почти готово","Қариб тайёр")}</h2><p class="auth-sub">${R("Так вас увидят покупатели","Харидорон шуморо чунин мебинанд")}</p>
     <form class="aform" data-f="signup" novalidate>
@@ -1726,12 +1717,12 @@ function openAuth(mode,reason,after){
       <label class="af-agree" data-af="agree"><input type="checkbox" name="agree"><span class="box"></span><span>${R("Принимаю","Қабул дорам")} <button type="button" class="alink" data-info="rules">${R("правила сайта","қоидаҳоро")}</button></span><small class="af-err" aria-live="polite"></small></label>
       <button class="btn btn-accent btn-block af-submit"><span>${R("Создать аккаунт","Аккаунт сохтан")}</span></button></form>`;
   else body=`<div class="auth-steps"><span class="done">✓</span><i class="on"></i><span class="on">2</span></div><h2 class="auth-h">${R("Введите код","Рамзро ворид кунед")}</h2>
-    <p class="auth-sub">${R("Отправили код в ","Рамзро фиристодем ба ")}${CH_NAME(PENDING.channel)} ${R("на","ба")} <b>${esc(PENDING.phone.replace(/^\+992(\d{2})(\d{3})(\d{2})(\d{2})$/,"+992 $1 $2 $3 $4"))}</b> <button type="button" class="alink" data-auth="phone">${R("Изменить","Тағйир")}</button></p>
+    <p class="auth-sub">${R("Отправили код в Telegram на","Рамзро ба Telegram фиристодем:")} <b>${esc(PENDING.phone.replace(/^\+992(\d{2})(\d{3})(\d{2})(\d{2})$/,"+992 $1 $2 $3 $4"))}</b> <button type="button" class="alink" data-auth="phone">${R("Изменить","Тағйир")}</button></p>
     <form class="aform" data-f="code" novalidate><div class="af" data-af="code"><div class="otp">${[0,1,2,3].map(i=>`<input inputmode="numeric" autocomplete="${i?"off":"one-time-code"}" maxlength="1" aria-label="${R("Цифра","Рақам")} ${i+1}" data-otp="${i}">`).join("")}</div><small class="af-err" aria-live="polite"></small></div>
       <input type="hidden" name="code">
       <button class="btn btn-accent btn-block af-submit"><span>${R("Подтвердить","Тасдиқ")}</span></button></form>
     <p class="auth-alt"><span id="resend"></span></p>
-    ${PENDING.code?`<p class="auth-demo">${R("Демо-режим: ","Реҷаи демо: ")}${CH_NAME(PENDING.channel)} ${R("не отправляется. Ваш код","фиристода намешавад. Рамз")} <b class="mono">${PENDING.code}</b></p>`:""}`;
+    ${PENDING.code?`<p class="auth-demo">${R("Демо-режим: Telegram не отправляется. Ваш код","Реҷаи демо: Telegram фиристода намешавад. Рамз")} <b class="mono">${PENDING.code}</b></p>`:""}`;
   $("#overlay").innerHTML=`<div class="scrim" data-close="1"></div><div class="sheet auth" role="dialog" aria-modal="true" aria-label="${R("Вход и регистрация","Ворид ва бақайдгирӣ")}">
     <aside class="auth-side"><div class="logo">myauto<span class="tld">.tj</span></div><p>${R("Покупайте и продавайте машины в Таджикистане с проверкой VIN и честными отзывами.","Мошин харед ва фурӯшед бо санҷиши VIN.")}</p><ul>${perks.map(([k,txt])=>`<li>${ic(k)}<span>${txt}</span></li>`).join("")}</ul></aside>
     <div class="auth-main"><button type="button" class="auth-x" data-close="1" aria-label="${R("Закрыть","Пӯшидан")}">${ic("x")}</button>${body}</div></div>`;
@@ -1747,7 +1738,7 @@ function openAuth(mode,reason,after){
       b.addEventListener("keydown",e=>{if(e.key==="Backspace"&&!b.value&&boxes[i-1]){boxes[i-1].focus();boxes[i-1].value="";sync();e.preventDefault()}if(e.key==="ArrowLeft"&&boxes[i-1])boxes[i-1].focus();if(e.key==="ArrowRight"&&boxes[i+1])boxes[i+1].focus()});
       b.addEventListener("paste",e=>{const d=(e.clipboardData.getData("text")||"").replace(/\D/g,"").slice(0,4);if(!d)return;e.preventDefault();boxes.forEach((x,j)=>x.value=d[j]||"");boxes[Math.min(d.length,3)].focus();sync()})});
     let left=PENDING.wait||30;const rs=$("#resend");
-    const tick=()=>{if(!rs.isConnected)return clearInterval(CODE_T);rs.innerHTML=left>0?`${R("Отправить код повторно через","Рамзи нав баъди")} <b>${Math.floor(left/60)}:${String(left%60).padStart(2,"0")}</b>`:`<button type="button" class="alink" data-resend="1">${R("Отправить код ещё раз","Рамзро боз фиристед")}</button> · <button type="button" class="alink" data-resend="${CH_ALT(PENDING.channel)}">${R("Прислать в ","Ба ")}${CH_NAME(CH_ALT(PENDING.channel))}</button>`;left--};
+    const tick=()=>{if(!rs.isConnected)return clearInterval(CODE_T);rs.innerHTML=left>0?`${R("Отправить код повторно через","Рамзи нав баъди")} <b>${Math.floor(left/60)}:${String(left%60).padStart(2,"0")}</b>`:`<button type="button" class="alink" data-resend="1">${R("Отправить код ещё раз","Рамзро боз фиристед")}</button>`;left--};
     tick();CODE_T=setInterval(tick,1000);
   }
   const first=ov.querySelector(mode==="code"?"[data-otp]":".af input:not([type=radio])");if(first)first.focus();
@@ -1755,17 +1746,17 @@ function openAuth(mode,reason,after){
 document.addEventListener("click",e=>{
   const eye=e.target.closest("[data-eye]");if(eye){const i=document.getElementById(eye.dataset.eye);const show=i.type==="password";i.type=show?"text":"password";eye.classList.toggle("on",show);eye.setAttribute("aria-label",show?R("Скрыть пароль","Пинҳон кардан"):R("Показать пароль","Нишон додан"));return}
   const rb=e.target.closest("[data-resend]");
-  if(rb&&PENDING&&!rb.disabled){rb.disabled=true;const was=PENDING.channel;if(rb.dataset.resend!=="1")PENDING.channel=rb.dataset.resend;
-    otpSend(PENDING.purpose||"register").then(()=>{openAuth("code");toast(R("Новый код отправлен","Рамзи нав фиристода шуд"))},msg=>{rb.disabled=false;PENDING.channel=was;toast(msg)});}
+  if(rb&&PENDING&&!rb.disabled){rb.disabled=true;
+    otpSend(PENDING.purpose||"register").then(()=>{openAuth("code");toast(R("Новый код отправлен","Рамзи нав фиристода шуд"))},msg=>{rb.disabled=false;toast(msg)});}
 });
 function doneAuth(msg){ $("#overlay").innerHTML=""; renderAcct(); toast(msg); const a=AFTER; AFTER=null; if(a) a(); else if(VIEW==="me"||VIEW==="dtp"||VIEW==="seller"||VIEW==="car"||VIEW==="admin") show(VIEW); }
 const FORMS={
-  /* Шаг 1: номер → код в WhatsApp или Telegram. Есть аккаунт — это вход, нет — регистрация (имя и город спросим после кода). */
+  /* Шаг 1: номер → код в Telegram. Есть аккаунт — это вход, нет — регистрация (имя и город спросим после кода). */
   async phone(f){const p=API.normPhone(f.phone.value);
     if(!p)return fErr(f,"phone",R("Введите 9 цифр номера, например 93 123 45 67","9 рақам ворид кунед"));
     const known=API.hasUser(p);
     if(!known&&API.phoneTaken(p))return fErr(f,"phone",R("Этот номер уже занят","Ин рақам банд аст"));
-    fBusy(f,true);PENDING={phone:p,channel:f.channel.value};
+    fBusy(f,true);PENDING={phone:p};
     try{await otpSend(known?"login":"register")}catch(msg){fBusy(f,false);return fErr(f,"phone",msg)}
     openAuth("code")},
   async code(f){const box=f.querySelector('[data-af="code"]');
