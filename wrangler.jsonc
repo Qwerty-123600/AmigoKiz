@@ -19,6 +19,22 @@
     "VIN_PER_DAY": "300",
     // Телефоны владельцев через запятую (+992XXXXXXXXX): при входе такой аккаунт получает роль admin.
     "OWNER_PHONES": ""
+  },
+  // Предварительные версии для каждой ветки и PR (Workers Builds → npx wrangler preview).
+  // У каждой своя пустая база (Durable Object) и отдельный KV, коды входа демо: показываются на экране.
+  // Номер +992 90 000 00 99 там администратор, чтобы проверять модерацию. С боевыми данными не пересекается.
+  "previews": {
+    "durable_objects": { "bindings": [{ "name": "STORE", "class_name": "Store" }] },
+    "kv_namespaces": [{ "binding": "VIN_CACHE", "id": "86264c9fc1e54a30893b57e04a9cfb78" }],
+    "vars": {
+      "ALLOWED_ORIGINS": "*",
+      "SMS_PROVIDER": "demo",
+      "WA_PROVIDER": "demo",
+      "TG_PROVIDER": "demo",
+      "VIN_PER_IP": "30",
+      "VIN_PER_DAY": "300",
+      "OWNER_PHONES": "+992900000099"
+    }
   }
   // Секреты задаются в панели Cloudflare (Settings → Variables and Secrets): V17_USER, V17_PASS, ADMIN_KEY, OTP_SECRET, WA_TOKEN, WA_PHONE_ID, TG_GATEWAY_TOKEN.
 }
