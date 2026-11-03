@@ -84,3 +84,12 @@ wrangler secret put TG_GATEWAY_TOKEN
 ## Лимиты и курс НБТ (добавлено 23.10.2026)
 - `/vin/:vin` без кэша: не больше `VIN_PER_IP` (30) запросов с одного IP в час и `VIN_PER_DAY` (300) всего в сутки, иначе `429 {error:"too_many", wait}`. Повторный VIN из кэша лимит не тратит. Нужен KV `VIN_CACHE`.
 - `GET /rate` → `{usd, eur, date, source:"nbt.tj"}`: курс НБТ на сегодня (по Душанбе), кэш 6 часов. Адрес выгрузки можно сменить переменной `NBT_URL` (`{date}` = ГГГГ-ММ-ДД). Разбор XML проверен только на образце: сайт nbt.tj недоступен из облачной среды разработки.
+
+## Общая база сайта (worker/store.js, добавлено 03.11.2026)
+Аккаунты, объявления, фото, отзывы, жалобы, заказы услуг, журнал модерации, ДТП и избранное лежат в одном Durable Object `Store` (SQLite, бесплатный план). Все запросы идут в один экземпляр "main" по очереди, поэтому одновременные изменения не теряются.
+- `POST /auth/login {phone, ticket}` → `{token, state}` или `404 {error:"no_user"}`; `POST /auth/register {phone, ticket, name, city, type}` → `{token, state}`. `ticket` — из `/otp/verify`, без него войти нельзя.
+- `GET /api/state` (заголовок `Authorization: Bearer <token>`) → то, что видно этому пользователю: активные объявления всех, свои любые, модератору все; телефон есть только у продавцов с активными объявлениями (админу — у всех).
+- `POST /api/op {op, args}` → `{ok, result, state}`. Операции: updateMe, favs, saveListing, setStatus, removeListing, saveReview, reply, report, approve, reject, order, confirm, decline, hideReview, keepReview, setRole, dtpSave, dtpVerify, dtpReject, dtpRemove, dtpDispute. Права и правила проверяет сервер, роль берётся только из базы.
+- Фото приходят как `data:image/...`, сервер сохраняет их отдельно и отдаёт по `/photo/<id>`.
+- Первый администратор: переменная `OWNER_PHONES` (через запятую, `+992XXXXXXXXX`) в `wrangler.jsonc`. Такой аккаунт получает роль admin при входе, снять её нельзя.
+- Сайт: `APP_API` в `public/index.html` подставляет `tools/build.py` (тот же адрес). В прототипе `APP_API` пуст, и всё по-прежнему хранится в браузере.

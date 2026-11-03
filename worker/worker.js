@@ -1,5 +1,6 @@
 // Cloudflare Worker. Секреты: wrangler secret put V17_USER / V17_PASS / ADMIN_KEY / OTP_SECRET / ключи SMS-провайдера.
 import { handle } from "./core.js";
+export { Store } from "./store.js";
 
 const enc = new TextEncoder();
 const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -22,6 +23,10 @@ const kv = (ns) => ns && {
 
 export default {
   async fetch(req, env) {
+    // Аккаунты, объявления, отзывы, модерация, ДТП: общая база в Durable Object (worker/store.js).
+    const p = new URL(req.url).pathname;
+    if (env.STORE && (p.startsWith("/api/") || p.startsWith("/auth/") || p.startsWith("/photo/")))
+      return env.STORE.get(env.STORE.idFromName("main")).fetch(req);
     // KV-хранилище VIN_CACHE необязательно для VIN (без него каждый запрос идёт в 17Vin),
     // но обязательно для SMS-кодов: код и счётчики попыток хранятся там (ключи otp:*).
     const cache = kv(env.VIN_CACHE);

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Собирает витрину myauto.tj (VIN-расшифровка + калькулятор растаможки) из прототипа.
+"""Собирает сайт myauto.tj из прототипа prototype/index.html в public/index.html.
 
-Прототип prototype/index.html не меняется, результат пишется в public/index.html.
-Запуск:  python3 tools/build.py [VIN_API]
+По умолчанию на главной полный сайт: доска объявлений, вход через Telegram, кабинет, ДТП, штрафы.
+С флагом --showcase собирается урезанная витрина (только VIN и растаможка), как было до 03.11.2026.
+Запуск:  python3 tools/build.py [--showcase] [VIN_API]
 VIN_API по умолчанию "same-origin": прокси в том же Worker, что и сайт (wrangler.jsonc).
 Можно указать адрес отдельного прокси или "" (без прокси: только ISO 3779 и NHTSA, курс НБТ вручную).
 """
@@ -12,7 +13,9 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = ROOT / "prototype" / "index.html"
 OUT = ROOT / "public" / "index.html"
 SITE = "https://myauto.tj"
-VIN_API = sys.argv[1].rstrip("/") if len(sys.argv) > 1 else "same-origin"
+ARGS = [a for a in sys.argv[1:] if a != "--showcase"]
+SHOWCASE = "--showcase" in sys.argv[1:]
+VIN_API = ARGS[0].rstrip("/") if ARGS else "same-origin"
 
 html = SRC.read_text(encoding="utf-8")
 
@@ -25,8 +28,12 @@ def sub(old, new, count=1):
     html = html.replace(old, new)
 
 
-DESC = "Бесплатная расшифровка VIN и калькулятор растаможки автомобиля в Таджикистане: пошлина, акциз, НДС и утильсбор по ставкам 2026 года."
-TITLE = "myauto.tj: проверка VIN и калькулятор растаможки"
+if SHOWCASE:
+    DESC = "Бесплатная расшифровка VIN и калькулятор растаможки автомобиля в Таджикистане: пошлина, акциз, НДС и утильсбор по ставкам 2026 года."
+    TITLE = "myauto.tj: проверка VIN и калькулятор растаможки"
+else:
+    DESC = "Объявления о продаже машин в Таджикистане: легковые, электро, мото, запчасти. Проверка VIN, калькулятор растаможки, штрафы ГАИ и база ДТП."
+    TITLE = "myauto.tj: машины Таджикистана в одном месте"
 
 # ---------- head: язык, title, SEO, превью для мессенджеров ----------
 sub("<!doctype html><html><head>", '<!doctype html><html lang="ru"><head>')
@@ -49,9 +56,12 @@ head = f"""<title>{TITLE}</title>
 sub("</style></head>", "</style>\n" + head + "</head>")
 
 # ---------- режим витрины ----------
-sub("const T = {", "const SHOWCASE=true;\nconst T = {")
+sub("const T = {", f"const SHOWCASE={'true' if SHOWCASE else 'false'};\nconst T = {{")
 # "same-origin": сайт и прокси в одном Worker (site-worker.js), запросы идут на тот же адрес
 sub('const VIN_API="";', 'const VIN_API=location.origin;' if VIN_API == "same-origin" else f'const VIN_API="{VIN_API}";')
+# полный сайт работает с общей базой на том же Worker (worker/store.js): аккаунты, объявления, модерация, ДТП
+if not SHOWCASE:
+    sub('const APP_API="";', 'const APP_API=location.origin;')
 
 OVR = r"""if(SHOWCASE){
   Object.assign(T,{
@@ -101,14 +111,15 @@ sub('$("#vin").value=load("vin")||"5YJ3E1EA7KF317000";', '$("#vin").value=load("
 
 # курс НБТ с прокси (/rate), если он развёрнут
 RATE_JS = r"""document.body.classList.toggle("showcase",SHOWCASE);
-if(SHOWCASE&&VIN_API)fetch(`${VIN_API}/rate`,{signal:AbortSignal.timeout(8000)}).then(r=>r.json()).then(j=>{
+if(VIN_API)fetch(`${VIN_API}/rate`,{signal:AbortSignal.timeout(8000)}).then(r=>r.json()).then(j=>{
   if(!(j&&j.usd>0))return;const u=$("#c-usd"),e=$("#c-eur");
   if(!u.dataset.touched){u.value=String(j.usd).replace(".",",");if(j.eur>0)e.value=String(j.eur).replace(".",",");calcCompute();}
   $$('[data-i18n="c_rate_n"]').forEach(n=>n.textContent=R(`Курс НБТ на ${j.date}. Можно изменить.`,`Қурби БМТ барои ${j.date}. Метавонед иваз кунед.`));
 }).catch(()=>{});
 ["c-usd","c-eur"].forEach(id=>$("#"+id).addEventListener("input",e=>e.target.dataset.touched=1));
-applyLang(); route();"""
-sub("applyLang(); route();\n</script>", RATE_JS + "\n</script>")
+applyLang(); route();
+API.boot();"""
+sub("applyLang(); route();\nAPI.boot();\n</script>", RATE_JS + "\n</script>")
 
 # ---------- разметка: CTA на главной, растаможка в нижнем меню, ссылка на конфиденциальность ----------
 sub('<h1 data-i18n-html="hero">Машины Таджикистана <em>в одном месте</em></h1>',
@@ -144,11 +155,12 @@ body.showcase footer .sc-only{display:block!important}
 # CSS только в основной <style> после <title>: первый блок — служебный сброс
 sub("/* Layout: sticky header,", CSS + "/* Layout: sticky header,")
 
-# категории на главной скрыты: их картинки (~125 КБ base64) витрине не нужны
+# в витрине категории на главной скрыты: их картинки (~125 КБ base64) не нужны
 import re
-html, n = re.subn(r'(const CAT_IMG=\{[^}]*\})', lambda m: re.sub(r'data:image/[a-z+]*;base64,[A-Za-z0-9+/=]+', '', m.group(1)), html, count=1)
-if n != 1:
-    sys.exit("build: CAT_IMG не найден")
+if SHOWCASE:
+    html, n = re.subn(r'(const CAT_IMG=\{[^}]*\})', lambda m: re.sub(r'data:image/[a-z+]*;base64,[A-Za-z0-9+/=]+', '', m.group(1)), html, count=1)
+    if n != 1:
+        sys.exit("build: CAT_IMG не найден")
 
 OUT.write_text(html, encoding="utf-8")
 print(f"OK: {OUT} ({len(html)//1024} КБ), VIN_API={VIN_API or '(пусто)'}")
