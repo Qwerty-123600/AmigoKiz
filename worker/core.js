@@ -70,7 +70,7 @@ const json = (body, status, cors) =>
 /**
  * env: V17_USER, V17_PASS (секреты), V17_BASE (по умолчанию https://api.17vin.com:8443),
  *      ALLOWED_ORIGINS (через запятую, "*" для теста), ADMIN_KEY (для /balance).
- *      SMS-коды: см. otp.js (SMS_PROVIDER, OTP_SECRET, ключи провайдера).
+ *      Коды по SMS и WhatsApp: см. otp.js (SMS_PROVIDER, WA_PROVIDER, OTP_SECRET, ключи провайдеров).
  * deps: { md5(str)→hex, cache: {get(key), put(key,val)} | null, + для otp.js: hmac, sha256, digits, store }
  */
 export async function handle(req, env, deps) {
