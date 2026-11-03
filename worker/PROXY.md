@@ -1,4 +1,4 @@
-# Сервер myauto.tj: прокси 17Vin и SMS-коды
+# Сервер myauto.tj: прокси 17Vin, коды по SMS и WhatsApp
 
 Сайт и приложение не знают пароля 17Vin. Они спрашивают этот прокси: `GET /vin/<VIN>`, а прокси считает токен и ходит в 17Vin.
 
@@ -67,6 +67,20 @@ wrangler secret put OSON_TOKEN     # или OSON_HASH
 ```
 SMS-коды хранятся в том же KV `VIN_CACHE` (ключи `otp:*`), поэтому в Worker он обязателен. На VPS всё лежит в памяти процесса.
 Проверено локально (Node, демо-режим и OsonSMS через заглушку); настоящий OsonSMS не проверялся: нужен аккаунт.
+
+### Код в WhatsApp (добавлено 03.11.2026)
+Пользователь сам выбирает, куда прислать код: `POST /otp/send {..., "channel":"whatsapp"}` (по умолчанию `"sms"`). В ответе есть `channel` и `via`. `purpose` теперь ещё и `"login"`: вход по коду без пароля.
+- Провайдер канала WhatsApp задаёт `WA_PROVIDER`: `demo` (по умолчанию), `whatsapp` (WhatsApp Cloud API от Meta) или `whatsapp,osonsms` (если Meta сразу отказала, уходит SMS).
+- Секреты: `WA_TOKEN` (постоянный токен системного пользователя в Meta Business, право `whatsapp_business_messaging`), `WA_PHONE_ID` (Phone number ID из WhatsApp Manager). Переменные: `WA_TEMPLATE` (по умолчанию `myauto_code`), `WA_LANG` (`ru`), `WA_API_VERSION` (`v21.0`).
+- Шаблон: в WhatsApp Manager создать шаблон категории **Authentication**, язык Русский, кнопка «Скопировать код», имя как в `WA_TEMPLATE`. Текст у таких шаблонов фиксирован Meta («*1234* — ваш код подтверждения…»).
+- Meta отвечает «принято», даже если у номера нет WhatsApp, и сообщает об этом только вебхуком. Поэтому на экране кода через минуту появляется «Прислать по SMS»; цепочка `whatsapp,osonsms` ловит лишь мгновенные отказы.
+- Если один канал настроен по-настоящему, а другой остался `demo`, демо-канал отвечает `503 {error:"channel_off"}`: иначе через него код пришёл бы прямо в ответе и можно было бы подтвердить чужой номер. Лимиты (5 в час на номер, 20 с IP, повтор раз в минуту) общие для обоих каналов.
+```
+wrangler secret put WA_TOKEN
+wrangler secret put WA_PHONE_ID
+# в wrangler.jsonc, vars: "WA_PROVIDER": "whatsapp"
+```
+Проверено локально с заглушкой Graph API (успех, отказ Meta, `channel_off`); настоящий WhatsApp не проверялся: нужен аккаунт Meta.
 
 ## Лимиты и курс НБТ (добавлено 23.10.2026)
 - `/vin/:vin` без кэша: не больше `VIN_PER_IP` (30) запросов с одного IP в час и `VIN_PER_DAY` (300) всего в сутки, иначе `429 {error:"too_many", wait}`. Повторный VIN из кэша лимит не тратит. Нужен KV `VIN_CACHE`.
