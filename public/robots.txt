@@ -1,3 +1,4 @@
 User-agent: *
 Allow: /
+Disallow: /test/
 Sitemap: https://myauto.tj/sitemap.xml
