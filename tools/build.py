@@ -152,3 +152,15 @@ if n != 1:
 
 OUT.write_text(html, encoding="utf-8")
 print(f"OK: {OUT} ({len(html)//1024} КБ), VIN_API={VIN_API or '(пусто)'}")
+
+# ---------- /test/: полный прототип на том же адресе, чтобы проверять вход через Telegram ----------
+# Тот же адрес = тот же Worker: /otp/* работает без CORS. Поисковикам закрыт (noindex + robots.txt).
+TEST = ROOT / "public" / "test" / "index.html"
+t = SRC.read_text(encoding="utf-8")
+if t.count('const VIN_API="";') != 1 or t.count("<title>myauto.tj</title>") != 1:
+    sys.exit("build: не получилось собрать /test/")
+t = t.replace('const VIN_API="";', 'const VIN_API=location.origin;')
+t = t.replace("<title>myauto.tj</title>", '<title>myauto.tj — тест</title>\n<meta name="robots" content="noindex,nofollow">')
+TEST.parent.mkdir(exist_ok=True)
+TEST.write_text(t, encoding="utf-8")
+print(f"OK: {TEST} (тестовая копия прототипа)")
