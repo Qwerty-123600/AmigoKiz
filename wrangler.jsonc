@@ -6,6 +6,9 @@
   "compatibility_date": "2025-01-01",
   "workers_dev": true,
   "assets": { "directory": "./public" },
+  // Общая база сайта (worker/store.js): один Durable Object на SQLite, бесплатный план это позволяет.
+  "durable_objects": { "bindings": [{ "name": "STORE", "class_name": "Store" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Store"] }],
   "kv_namespaces": [{ "binding": "VIN_CACHE", "id": "f373e15ae64d4965b592eb2342785e1c" }],
   "vars": {
     "ALLOWED_ORIGINS": "https://myauto.myauto-tj.workers.dev,https://myauto.tj,https://www.myauto.tj",
@@ -13,7 +16,9 @@
     "WA_PROVIDER": "demo",
     "TG_PROVIDER": "telegram",
     "VIN_PER_IP": "30",
-    "VIN_PER_DAY": "300"
+    "VIN_PER_DAY": "300",
+    // Телефоны владельцев через запятую (+992XXXXXXXXX): при входе такой аккаунт получает роль admin.
+    "OWNER_PHONES": ""
   }
   // Секреты задаются в панели Cloudflare (Settings → Variables and Secrets): V17_USER, V17_PASS, ADMIN_KEY, OTP_SECRET, WA_TOKEN, WA_PHONE_ID, TG_GATEWAY_TOKEN.
 }

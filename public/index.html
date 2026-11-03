@@ -1769,42 +1769,85 @@ const API=(()=>{
   const save=()=>{try{localStorage.setItem("myauto.db",JSON.stringify(D));return true}catch(e){toast(R("Не хватает места в браузере: уберите часть фото","Ҷой нест: якчанд аксро нест кунед"));return false}};
   const uid=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   const normPhone=s=>{let d=String(s||"").replace(/\D/g,"");if(d.length===9)d="992"+d;return d.length===12&&d.startsWith("992")?"+"+d:null};
+  /* Сервер (worker/store.js): когда APP_API задан, общая база одна на всех, здесь только её копия.
+     Изменения сначала применяются тут (сразу видно), потом уходят на сервер; ответ сервера заменяет копию. */
+  const SRV=()=>typeof APP_API!=="undefined"&&APP_API;
+  let TOKEN=load("token")||"",QUEUE=Promise.resolve();
+  async function call(path,body){
+    let r,j={};
+    try{r=await fetch(APP_API+path,{method:body?"POST":"GET",headers:{"content-type":"application/json",...(TOKEN?{authorization:"Bearer "+TOKEN}:{})},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(30000)});j=await r.json()}
+    catch(e){throw"net"}
+    if(!r.ok||j.error)throw j.error||"server";return j}
+  function apply(st){
+    if(!st||!Array.isArray(st.users))return;
+    Object.assign(D,{users:st.users,listings:st.listings,reviews:st.reviews,reports:st.reports,orders:st.orders,log:st.log,hidden:st.hidden,dismissed:st.dismissed,session:st.me});
+    save();
+    if(typeof DTP!=="undefined")DTP._set(st.incidents||[]);
+    if(st.me){const local=[...FAVS];FAVS.clear();(st.favs||[]).forEach(x=>FAVS.add(x));
+      if(!(st.favs||[]).length&&local.length){local.forEach(x=>FAVS.add(x));remote("favs",{ids:local})}
+      store("favs",[...FAVS].join(","));}
+  }
+  const ERRS={net:["Нет связи с сервером. Изменение не сохранено","Пайваст бо сервер нест"],auth:["Войдите заново","Аз нав ворид шавед"],role:["Нет прав на это действие","Ҳуқуқ нест"],
+    owner:["Это не ваше объявление","Ин эълони шумо нест"],photo_big:["Фото слишком большое","Акс хеле калон аст"],reused:["Этот номер операции уже использован","Рақам истифода шудааст"],
+    dup:["Такая заявка уже есть","Чунин дархост ҳаст"],state:["Статус уже изменился, обновили страницу","Ҳолат иваз шуд"]};
+  const errText=e=>(ERRS[e]||["Сервер не принял изменение: ","Сервер қабул накард: "+e])[LANG==="ru"?0:1]+(ERRS[e]?"":e);
+  function refresh(){renderAcct();syncListings();if(!$("#overlay").innerHTML.trim())route();}
+  function remote(op,args){
+    if(!SRV())return;
+    QUEUE=QUEUE.then(()=>call("/api/op",{op,args})).then(j=>{apply(j.state);refresh()})
+      .catch(e=>{toast(errText(e));if(e==="auth"){TOKEN="";store("token","")}return boot()});
+    return QUEUE}
+  async function boot(){
+    if(!SRV())return;
+    try{const st=await call("/api/state");apply(st);if(!st.me&&TOKEN){TOKEN="";store("token","")}refresh()}catch(e){}
+  }
+  async function signedIn(j){TOKEN=j.token;store("token",TOKEN);apply(j.state);return D.users.find(u=>u.id===D.session)||null}
   return{
-    normPhone,
+    normPhone,remote,boot,server:SRV,
+    newId(){let id;do{id=13+Math.floor(Math.random()*9e8)}while(D.listings.some(l=>l.id===id));return id},
+    /* После кода из Telegram: есть аккаунт — вход, нет — null (дальше регистрация). */
+    async login(phone,ticket){
+      if(!SRV())return this.hasUser(phone)?this.loginByPhone(phone):null;
+      try{return await signedIn(await call("/auth/login",{phone:normPhone(phone),ticket}))}catch(e){if(e==="no_user")return null;throw e}},
     me(){return D.users.find(u=>u.id===D.session)||null},
     user(id){return D.users.find(u=>u.id===id)||null},
     phoneTaken(p){return D.users.some(u=>u.phone===p)||SELLERS.some(s=>normPhone(s.phone)===p)},
-    async register({phone,name,city,type}){const p=normPhone(phone);if(!p)throw"phone";if(this.phoneTaken(p))throw"exists";
+    async register({phone,name,city,type,ticket}){const p=normPhone(phone);if(!p)throw"phone";
+      if(SRV())return signedIn(await call("/auth/register",{phone:p,ticket,name:name.trim(),city,type}));
+      if(this.phoneTaken(p))throw"exists";
       const u={id:uid("u"),phone:p,name:name.trim(),city,type,createdAt:Date.now()};D.users.push(u);D.session=u.id;save();return u},
     hasUser(p){return D.users.some(u=>u.phone===normPhone(p))},
     /* Только после подтверждённого кода (otpCheck): номер доказан, пароль не нужен. */
     loginByPhone(phone){const u=D.users.find(x=>x.phone===normPhone(phone));if(!u)throw"bad";D.session=u.id;save();return u},
-    logout(){D.session=null;save()},
-    updateMe(patch){Object.assign(this.me(),patch);save()},
+    logout(){D.session=null;save();if(SRV()){const t=TOKEN;TOKEN="";store("token","");fetch(APP_API+"/auth/logout",{method:"POST",headers:{"content-type":"application/json",authorization:"Bearer "+t},body:"{}"}).catch(()=>{});boot()}},
+    updateMe(patch){Object.assign(this.me(),patch);save();remote("updateMe",patch)},
     listings(){return D.listings},
     listing(id){return D.listings.find(l=>l.id===id)||null},
     saveListing(l){const me=this.me();if(!me)throw"auth";
-      if(l.id){const old=this.listing(l.id);if(!old||old.sellerId!==me.id)throw"owner";Object.assign(old,l,{updatedAt:Date.now(),status:"pending",submittedAt:Date.now()});return save()?old:null}
-      const n={...l,id:D.next++,sellerId:me.id,status:"pending",createdAt:Date.now(),submittedAt:Date.now()};D.listings.push(n);if(!save()){D.listings.pop();D.next--;return null}return n},
-    setStatus(id,status){const l=this.listing(id),ok=["active","sold","archived"];if(l&&l.sellerId===D.session&&ok.includes(l.status)&&ok.includes(status)){l.status=status;save()}},
-    removeListing(id){const l=this.listing(id);if(l&&l.sellerId===D.session){D.listings=D.listings.filter(x=>x!==l);save()}},
+      if(l.id){const old=this.listing(l.id);if(!old||old.sellerId!==me.id)throw"owner";Object.assign(old,l,{updatedAt:Date.now(),status:"pending",submittedAt:Date.now()});
+        if(SRV()){save();remote("saveListing",{listing:old});return old}return save()?old:null}
+      const n={...l,id:SRV()?this.newId():D.next++,sellerId:me.id,status:"pending",createdAt:Date.now(),submittedAt:Date.now()};D.listings.push(n);
+      if(SRV()){save();remote("saveListing",{listing:n});return n}
+      if(!save()){D.listings.pop();D.next--;return null}return n},
+    setStatus(id,status){const l=this.listing(id),ok=["active","sold","archived"];if(l&&l.sellerId===D.session&&ok.includes(l.status)&&ok.includes(status)){l.status=status;save();remote("setStatus",{id,status})}},
+    removeListing(id){const l=this.listing(id);if(l&&l.sellerId===D.session){D.listings=D.listings.filter(x=>x!==l);save();remote("removeListing",{id})}},
     reviews(sellerId){const all=DEMO_REVIEWS.concat(D.reviews).filter(r=>!D.hidden.includes(r.id));return(sellerId?all.filter(r=>r.sellerId===sellerId):all).sort((a,b)=>b.createdAt-a.createdAt)},
     myReview(sellerId){return D.reviews.find(r=>r.sellerId===sellerId&&r.authorId===D.session)||null},
     saveReview({sellerId,rating,deal,listingId,text}){const me=this.me();if(!me)throw"auth";if(sellerId===me.id)throw"self";
       if(!(rating>=1&&rating<=5))throw"rating";if(text.trim().length<10)throw"text";
-      const ex=this.myReview(sellerId);
+      const ex=this.myReview(sellerId),rid=ex?ex.id:uid("r");
       if(ex)Object.assign(ex,{rating,deal,listingId,text:text.trim(),editedAt:Date.now()});
-      else D.reviews.push({id:uid("r"),sellerId,authorId:me.id,rating,deal,listingId:listingId||null,text:text.trim(),createdAt:Date.now(),reply:null});
-      save()},
-    reply(id,text){const r=D.reviews.find(x=>x.id===id);if(!r||r.sellerId!==D.session||r.reply)throw"no";r.reply={text:text.trim(),at:Date.now()};save()},
-    report(id){if(!D.reports.includes(id)){D.reports.push(id);save()}},
+      else D.reviews.push({id:rid,sellerId,authorId:me.id,rating,deal,listingId:listingId||null,text:text.trim(),createdAt:Date.now(),reply:null});
+      save();remote("saveReview",{id:rid,sellerId,rating,deal,listingId,text})},
+    reply(id,text){const r=D.reviews.find(x=>x.id===id);if(!r||r.sellerId!==D.session||r.reply)throw"no";r.reply={text:text.trim(),at:Date.now()};save();remote("reply",{id,text})},
+    report(id){if(!D.reports.includes(id)){D.reports.push(id);save();remote("report",{id})}},
     reported(id){return D.reports.includes(id)},
     raw(){return D}, commit(){return save()}
   };
 })();
 function sellerById(id){
   const s=SELLERS.find(x=>x.id===id); if(s) return s;
-  const u=API.user(id); return u?{id:u.id,name:u.name,type:u.type,city:u.city,since:new Date(u.createdAt).getFullYear(),phone:u.phone.replace(/^\+992(\d{2})(\d{3})(\d{2})(\d{2})$/,"+992 $1 $2 $3 $4"),user:true}:null;
+  const u=API.user(id); return u?{id:u.id,name:u.name,type:u.type,city:u.city,since:new Date(u.createdAt).getFullYear(),phone:(u.phone||"").replace(/^\+992(\d{2})(\d{3})(\d{2})(\d{2})$/,"+992 $1 $2 $3 $4"),user:true}:null;
 }
 function rating(sellerId){
   const rs=API.reviews(sellerId),n=rs.length,dist=[0,0,0,0,0];rs.forEach(r=>dist[r.rating-1]++);
@@ -1942,7 +1985,8 @@ const FORMS={
     fBusy(f,true);
     try{await otpCheck(f.code.value)}catch(msg){fBusy(f,false);box.classList.add("bad");box.querySelector(".af-err").textContent=msg;f.querySelectorAll("[data-otp]").forEach(x=>x.value="");f.code.value="";f.querySelector("[data-otp]").focus();return}
     box.classList.remove("bad");clearInterval(CODE_T);
-    if(API.hasUser(PENDING.phone)){const u=API.loginByPhone(PENDING.phone);PENDING=null;return doneAuth(R("Здравствуйте, ","Салом, ")+u.name)}
+    let u=null;try{u=await API.login(PENDING.phone,PENDING.ticket)}catch(e){fBusy(f,false);box.classList.add("bad");box.querySelector(".af-err").textContent=R("Не удалось войти, попробуйте ещё раз","Ворид шудан нашуд");return}
+    if(u){PENDING=null;return doneAuth(R("Здравствуйте, ","Салом, ")+u.name)}
     PENDING.verified=true;openAuth("signup")},
   /* Шаг 3, только для нового номера: номер уже подтверждён кодом. */
   async signup(f){
@@ -1950,7 +1994,7 @@ const FORMS={
     if(f.name.value.trim().length<2)return fErr(f,"name",R("Укажите имя, от 2 букв","Номро нависед"));
     if(!f.agree.checked){const b=f.querySelector(".af-agree");b.classList.add("bad");b.querySelector(".af-err").textContent=R("Нужно согласие с правилами","Розигӣ лозим аст");return}
     fBusy(f,true);
-    try{const u=await API.register({phone:PENDING.phone,name:f.name.value.trim(),city:f.city.value,type:f.type.value});PENDING=null;doneAuth(R("Аккаунт создан. Добро пожаловать, ","Аккаунт сохта шуд. Хуш омадед, ")+u.name)}
+    try{const u=await API.register({phone:PENDING.phone,ticket:PENDING.ticket,name:f.name.value.trim(),city:f.city.value,type:f.type.value});PENDING=null;doneAuth(R("Аккаунт создан. Добро пожаловать, ","Аккаунт сохта шуд. Хуш омадед, ")+u.name)}
     catch(e){fBusy(f,false);toast(R("Этот номер уже зарегистрирован","Ин рақам аллакай ҳаст"))}},
   profile(f){if(f.name.value.trim().length<2){f.name.focus();return}API.updateMe({name:f.name.value.trim(),city:f.city.value,type:f.type.value});$("#overlay").innerHTML="";renderAcct();syncListings();renderMe();toast(R("Профиль сохранён","Профил захира шуд"))},
   post(f){sendPost(f)},
@@ -2613,8 +2657,10 @@ const DTP=(()=>{
   const canSee=r=>r.status!=="rejected"||(me()&&(r.reporterId===me().id||staff()));
   const openDisp=r=>(r.disputes||[]).filter(d=>!d.closed);
   const sorted=a=>a.sort((x,y)=>(y.date||"").localeCompare(x.date||"")||y.createdAt-x.createdAt);
+  const remote=(op,args)=>API.remote(op,args);
   return{
     staff,openDisp,
+    _set(items){D.items=items;save()},
     get(id){return D.items.find(r=>r.id===id)||null},
     list(){return sorted(D.items.filter(canSee))},
     byVin(vin){return this.list().filter(r=>r.vin===vin)},
@@ -2635,16 +2681,19 @@ const DTP=(()=>{
         airbags:DTP_BAG[rec.airbags]?rec.airbags:"unknown",repaired:DTP_REP[rec.repaired]?rec.repaired:"unknown",
         evidence:ev,docNo:String(rec.docNo||"").trim().slice(0,60),desc:desc.slice(0,1500),photos:(rec.photos||[]).slice(0,6)};
       if(rec.id){const old=this.get(rec.id);if(!old)throw"no";if(!(staff()||(old.reporterId===m.id&&old.status==="pending")))throw"owner";
-        const keep={...old};Object.assign(old,c,{updatedAt:Date.now(),updatedBy:m.id});if(!save()){Object.assign(old,keep);return null}return old}
+        const keep={...old};Object.assign(old,c,{updatedAt:Date.now(),updatedBy:m.id});
+        if(API.server()){save();remote("dtpSave",{rec:old});return old}
+        if(!save()){Object.assign(old,keep);return null}return old}
       if(D.items.some(r=>r.vin===vin&&r.date===c.date&&r.reporterId===m.id&&r.status!=="rejected"))throw"dup";
       const st=staff(),n={...c,id:uid(),reporterId:m.id,reporterRole:st?"staff":"user",status:st?"verified":"pending",
         verifiedBy:st?m.id:null,verifiedAt:st?Date.now():null,rejectReason:null,disputes:[],createdAt:Date.now()};
-      D.items.push(n);if(!save()){D.items.pop();return null}return n},
-    verify(id){const r=this.get(id);if(!r||!staff())throw"staff";Object.assign(r,{status:"verified",verifiedBy:me().id,verifiedAt:Date.now(),rejectReason:null});openDisp(r).forEach(d=>d.closed=true);save()},
-    reject(id,reason){const r=this.get(id);if(!r||!staff())throw"staff";Object.assign(r,{status:"rejected",verifiedBy:me().id,verifiedAt:Date.now(),rejectReason:String(reason||"").trim().slice(0,300)});openDisp(r).forEach(d=>d.closed=true);save()},
-    remove(id){const r=this.get(id),m=me();if(!r||!m)return;if(staff()||(r.reporterId===m.id&&r.status!=="verified")){D.items=D.items.filter(x=>x!==r);save()}},
+      D.items.push(n);if(API.server()){save();remote("dtpSave",{rec:n});return n}
+      if(!save()){D.items.pop();return null}return n},
+    verify(id){const r=this.get(id);if(!r||!staff())throw"staff";Object.assign(r,{status:"verified",verifiedBy:me().id,verifiedAt:Date.now(),rejectReason:null});openDisp(r).forEach(d=>d.closed=true);save();remote("dtpVerify",{id})},
+    reject(id,reason){const r=this.get(id);if(!r||!staff())throw"staff";Object.assign(r,{status:"rejected",verifiedBy:me().id,verifiedAt:Date.now(),rejectReason:String(reason||"").trim().slice(0,300)});openDisp(r).forEach(d=>d.closed=true);save();remote("dtpReject",{id,reason})},
+    remove(id){const r=this.get(id),m=me();if(!r||!m)return;if(staff()||(r.reporterId===m.id&&r.status!=="verified")){D.items=D.items.filter(x=>x!==r);save();remote("dtpRemove",{id})}},
     dispute(id,text){const r=this.get(id),m=me();if(!m)throw"auth";if(!r||r.reporterId===m.id)throw"own";if(String(text||"").trim().length<10)throw"text";
-      if(this.disputed(id))throw"dup";(r.disputes=r.disputes||[]).push({userId:m.id,text:String(text).trim().slice(0,600),at:Date.now(),closed:false});save()},
+      if(this.disputed(id))throw"dup";(r.disputes=r.disputes||[]).push({userId:m.id,text:String(text).trim().slice(0,600),at:Date.now(),closed:false});save();remote("dtpDispute",{id,text})},
     disputed(id){const r=this.get(id),m=me();return!!(r&&m&&(r.disputes||[]).some(d=>d.userId===m.id))},
     exportJSON(){return JSON.stringify({format:"myauto.incidents/1",exportedAt:new Date().toISOString(),items:D.items},null,2)}
   };
@@ -2838,7 +2887,7 @@ document.addEventListener("change",async e=>{if(e.target.id!=="d-photo")return;c
 /* Роли: user; staff — модератор (объявления, ДТП, жалобы); admin — ещё оплаты и роли.
    На сервере роль читается только из базы по токену, первого админа задаёт владелец (OWNER_PHONES), кодов в странице нет.
    Пока сервера нет (APP_API пуст), роль на этом устройстве включается на странице #admin: это демо, не защита. */
-const APP_API="";
+const APP_API=location.origin;
 const ROLE=()=>(API.me()||{}).role||"user";
 const isAdmin=()=>ROLE()==="admin", isMod=()=>ROLE()==="admin"||ROLE()==="staff";
 const SERVICES={
@@ -2866,11 +2915,12 @@ const ADM=(()=>{
     log:()=>D().log,
     queue(){return isMod()?API.listings().filter(l=>l.status==="pending").sort((a,b)=>(a.submittedAt||a.createdAt)-(b.submittedAt||b.createdAt)):[]},
     approve(id){if(!isMod())throw"role";const l=API.listing(id);if(!l||l.status!=="pending")throw"state";
-      Object.assign(l,{status:"active",approvedAt:now(),modBy:me().id,modAt:now(),modReason:null,modNote:""});log("approve",id);API.commit()},
+      Object.assign(l,{status:"active",approvedAt:now(),modBy:me().id,modAt:now(),modReason:null,modNote:""});log("approve",id);API.commit();API.remote("approve",{id})},
     reject(id,reason,note){if(!isMod())throw"role";const l=API.listing(id);if(!l||!["pending","active"].includes(l.status))throw"state";if(!MOD_REASONS[reason])throw"reason";
       note=String(note||"").trim().slice(0,300);if(reason==="other"&&note.length<5)throw"note";
       const act=l.status==="active"?"block":"reject";
-      Object.assign(l,{status:"rejected",modBy:me().id,modAt:now(),modReason:reason,modNote:note});log(act,id,MOD_REASONS[reason][0]+(note?": "+note:""));API.commit()},
+      Object.assign(l,{status:"rejected",modBy:me().id,modAt:now(),modReason:reason,modNote:note});log(act,id,MOD_REASONS[reason][0]+(note?": "+note:""));API.commit();
+      API.remote("reject",{id,reason,note,logNote:MOD_REASONS[reason][0]+(note?": "+note:"")})},
     myOrders(){const m=me();return m?O().filter(o=>o.userId===m.id).sort((a,b)=>b.createdAt-a.createdAt):[]},
     order({listingId,service,method,payRef,receipt}){const m=me();if(!m)throw"auth";const l=API.listing(listingId);
       if(!l||l.sellerId!==m.id)throw"owner";if(l.status!=="active")throw"inactive";if(!SERVICES[service])throw"service";if(!PAYM[method])throw"method";
@@ -2878,24 +2928,26 @@ const ADM=(()=>{
       if(O().some(o=>o.status!=="rejected"&&o.method===method&&o.payRef===ref))throw"reused";
       if(O().some(o=>o.status==="pending"&&o.listingId===l.id&&o.service===service))throw"dup";
       const o={id:uid("o"),userId:m.id,listingId:l.id,service,amount:SERVICES[service].price,currency:"TJS",method,payRef:ref,receipt:receipt||null,status:"pending",createdAt:now()};
-      O().push(o);if(!API.commit()){O().pop();return null}return o},
+      O().push(o);if(API.server()){API.commit();API.remote("order",o);return o}if(!API.commit()){O().pop();return null}return o},
     pending(){return isAdmin()?O().filter(o=>o.status==="pending").sort((a,b)=>a.createdAt-b.createdAt):[]},
     decided(){return isAdmin()?O().filter(o=>o.status!=="pending").sort((a,b)=>b.decidedAt-a.decidedAt):[]},
     refUsed(o){return O().filter(x=>x!==o&&x.method===o.method&&x.payRef===o.payRef)},
     confirm(id){if(!isAdmin())throw"role";const o=O().find(x=>x.id===id);if(!o||o.status!=="pending")throw"state";
       const l=API.listing(o.listingId),t=now(),s=SERVICES[o.service];
       if(l){if(o.service==="up"){l.bumpedAt=t;o.startsAt=t}else{const k=o.service+"Until",from=Math.max(t,l[k]||0);l[k]=from+s.days*864e5;o.startsAt=from;o.endsAt=l[k]}}
-      Object.assign(o,{status:"confirmed",decidedBy:me().id,decidedAt:t});log("pay_ok",o.id,`${s.t[0]}, ${o.amount} сом., ${PAYM[o.method][0]} № ${o.payRef}`);API.commit()},
+      const ln=`${s.t[0]}, ${o.amount} сом., ${PAYM[o.method][0]} № ${o.payRef}`;
+      Object.assign(o,{status:"confirmed",decidedBy:me().id,decidedAt:t});log("pay_ok",o.id,ln);API.commit();API.remote("confirm",{id,logNote:ln})},
     decline(id,reason,note){if(!isAdmin())throw"role";const o=O().find(x=>x.id===id);if(!o||o.status!=="pending")throw"state";if(!PAY_REASONS[reason])throw"reason";
       note=String(note||"").trim().slice(0,300);if(reason==="other"&&note.length<5)throw"note";
-      Object.assign(o,{status:"rejected",decidedBy:me().id,decidedAt:now(),rejectReason:reason,rejectNote:note});log("pay_no",o.id,PAY_REASONS[reason][0]+(note?": "+note:""));API.commit()},
+      Object.assign(o,{status:"rejected",decidedBy:me().id,decidedAt:now(),rejectReason:reason,rejectNote:note});log("pay_no",o.id,PAY_REASONS[reason][0]+(note?": "+note:""));API.commit();
+      API.remote("decline",{id,reason,note,logNote:PAY_REASONS[reason][0]+(note?": "+note:"")})},
     complaints(){if(!isMod())return[];const d=D();return API.reviews().filter(r=>d.reports.includes(r.id)&&!d.dismissed.includes(r.id))},
-    hideReview(id){if(!isMod())throw"role";D().hidden.push(id);log("rev_hide",id);API.commit()},
-    keepReview(id){if(!isMod())throw"role";D().dismissed.push(id);log("rev_keep",id);API.commit()},
+    hideReview(id){if(!isMod())throw"role";D().hidden.push(id);log("rev_hide",id);API.commit();API.remote("hideReview",{id})},
+    keepReview(id){if(!isMod())throw"role";D().dismissed.push(id);log("rev_keep",id);API.commit();API.remote("keepReview",{id})},
     users(){return isAdmin()?D().users.slice().sort((a,b)=>b.createdAt-a.createdAt):[]},
     setRole(id,role){if(!isAdmin())throw"role";if(!ROLES[role])throw"bad";const u=API.user(id);if(!u)throw"no";
       if(u.role==="admin"&&role!=="admin"&&D().users.filter(x=>x.role==="admin").length<2)throw"last";
-      u.role=role;log("role",u.id,u.name+" → "+ROLES[role][0]);API.commit()},
+      u.role=role;log("role",u.id,u.name+" → "+ROLES[role][0]);API.commit();API.remote("setRole",{id,role,logNote:u.name+" → "+ROLES[role][0]})},
     protoRole(role){if(APP_API||!me())throw"server";if(!ROLES[role])throw"bad";me().role=role;if(role!=="user")log("proto",me().id,ROLES[role][0]);API.commit()}
   };
 })();
@@ -3162,7 +3214,7 @@ window.addEventListener("resize",()=>{if(VIEW==="search")mobileFilterButtons()})
 
 document.addEventListener("click",e=>{
   const T0=e.target;
-  const fav=T0.closest("[data-fav]"); if(fav){e.preventDefault();e.stopPropagation();const id=+fav.dataset.fav;FAVS.has(id)?FAVS.delete(id):FAVS.add(id);store("favs",[...FAVS].join(","));toast(FAVS.has(id)?"Добавлено в избранное":"Убрано из избранного");
+  const fav=T0.closest("[data-fav]"); if(fav){e.preventDefault();e.stopPropagation();const id=+fav.dataset.fav;FAVS.has(id)?FAVS.delete(id):FAVS.add(id);store("favs",[...FAVS].join(","));if(API.me())API.remote("favs",{ids:[...FAVS]});toast(FAVS.has(id)?"Добавлено в избранное":"Убрано из избранного");
     if(VIEW==="car")renderCar(CURCAR);else if(VIEW==="favs")renderFavs();else{renderHome();renderSearch();}return;}
   const ph=T0.closest("[data-phone]"); if(ph){$$(".ph-box").forEach(b=>b.innerHTML=`<div class="phone">${ph.dataset.phone}</div>`);return;}
   const au=T0.closest("[data-auth]"); if(au){openAuth(au.dataset.auth);return;}
@@ -3243,6 +3295,7 @@ if(VIN_API)fetch(`${VIN_API}/rate`,{signal:AbortSignal.timeout(8000)}).then(r=>r
 }).catch(()=>{});
 ["c-usd","c-eur"].forEach(id=>$("#"+id).addEventListener("input",e=>e.target.dataset.touched=1));
 applyLang(); route();
+API.boot();
 </script>
 
 </body></html>

@@ -59,6 +59,9 @@ sub("</style></head>", "</style>\n" + head + "</head>")
 sub("const T = {", f"const SHOWCASE={'true' if SHOWCASE else 'false'};\nconst T = {{")
 # "same-origin": сайт и прокси в одном Worker (site-worker.js), запросы идут на тот же адрес
 sub('const VIN_API="";', 'const VIN_API=location.origin;' if VIN_API == "same-origin" else f'const VIN_API="{VIN_API}";')
+# полный сайт работает с общей базой на том же Worker (worker/store.js): аккаунты, объявления, модерация, ДТП
+if not SHOWCASE:
+    sub('const APP_API="";', 'const APP_API=location.origin;')
 
 OVR = r"""if(SHOWCASE){
   Object.assign(T,{
@@ -114,8 +117,9 @@ if(VIN_API)fetch(`${VIN_API}/rate`,{signal:AbortSignal.timeout(8000)}).then(r=>r
   $$('[data-i18n="c_rate_n"]').forEach(n=>n.textContent=R(`Курс НБТ на ${j.date}. Можно изменить.`,`Қурби БМТ барои ${j.date}. Метавонед иваз кунед.`));
 }).catch(()=>{});
 ["c-usd","c-eur"].forEach(id=>$("#"+id).addEventListener("input",e=>e.target.dataset.touched=1));
-applyLang(); route();"""
-sub("applyLang(); route();\n</script>", RATE_JS + "\n</script>")
+applyLang(); route();
+API.boot();"""
+sub("applyLang(); route();\nAPI.boot();\n</script>", RATE_JS + "\n</script>")
 
 # ---------- разметка: CTA на главной, растаможка в нижнем меню, ссылка на конфиденциальность ----------
 sub('<h1 data-i18n-html="hero">Машины Таджикистана <em>в одном месте</em></h1>',
