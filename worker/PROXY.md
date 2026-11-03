@@ -68,19 +68,21 @@ wrangler secret put OSON_TOKEN     # или OSON_HASH
 SMS-коды хранятся в том же KV `VIN_CACHE` (ключи `otp:*`), поэтому в Worker он обязателен. На VPS всё лежит в памяти процесса.
 Проверено локально (Node, демо-режим и OsonSMS через заглушку); настоящий OsonSMS не проверялся: нужен аккаунт.
 
-### Код в WhatsApp (добавлено 03.11.2026)
-Пользователь сам выбирает, куда прислать код: `POST /otp/send {..., "channel":"whatsapp"}` (по умолчанию `"sms"`). В ответе есть `channel` и `via`. `purpose` теперь ещё и `"login"`: вход по коду без пароля.
-- Провайдер канала WhatsApp задаёт `WA_PROVIDER`: `demo` (по умолчанию), `whatsapp` (WhatsApp Cloud API от Meta) или `whatsapp,osonsms` (если Meta сразу отказала, уходит SMS).
-- Секреты: `WA_TOKEN` (постоянный токен системного пользователя в Meta Business, право `whatsapp_business_messaging`), `WA_PHONE_ID` (Phone number ID из WhatsApp Manager). Переменные: `WA_TEMPLATE` (по умолчанию `myauto_code`), `WA_LANG` (`ru`), `WA_API_VERSION` (`v21.0`).
-- Шаблон: в WhatsApp Manager создать шаблон категории **Authentication**, язык Русский, кнопка «Скопировать код», имя как в `WA_TEMPLATE`. Текст у таких шаблонов фиксирован Meta («*1234* — ваш код подтверждения…»).
-- Meta отвечает «принято», даже если у номера нет WhatsApp, и сообщает об этом только вебхуком. Поэтому на экране кода через минуту появляется «Прислать по SMS»; цепочка `whatsapp,osonsms` ловит лишь мгновенные отказы.
-- Если один канал настроен по-настоящему, а другой остался `demo`, демо-канал отвечает `503 {error:"channel_off"}`: иначе через него код пришёл бы прямо в ответе и можно было бы подтвердить чужой номер. Лимиты (5 в час на номер, 20 с IP, повтор раз в минуту) общие для обоих каналов.
+### Вход только через WhatsApp или Telegram (добавлено 03.11.2026)
+На сайте и в приложении больше нет пароля и SMS: человек вводит номер, выбирает WhatsApp или Telegram и вводит код. Есть аккаунт с этим номером — это вход, нет — после кода спрашиваем имя и город.
+- `POST /otp/send {..., "channel":"whatsapp"|"telegram"|"sms"}` (без `channel` — `"sms"`, для старых клиентов). В ответе есть `channel` и `via`. `purpose`: `"login"` или `"register"` (`"reset"` больше не нужен).
+- У каждого канала своя цепочка: `WA_PROVIDER`, `TG_PROVIDER`, `SMS_PROVIDER`. Значения: `demo` (по умолчанию), `whatsapp`, `telegram`, `osonsms`, `twilio`; через запятую — запасной провайдер при мгновенном отказе.
+- **WhatsApp** (Cloud API от Meta): секреты `WA_TOKEN` (постоянный токен системного пользователя, право `whatsapp_business_messaging`), `WA_PHONE_ID` (Phone number ID). Переменные `WA_TEMPLATE` (`myauto_code`), `WA_LANG` (`ru`), `WA_API_VERSION` (`v21.0`). Шаблон в WhatsApp Manager: категория **Authentication**, русский, кнопка «Скопировать код». Meta отвечает «принято», даже если у номера нет WhatsApp, поэтому через минуту на экране кода есть «Прислать в Telegram».
+- **Telegram** (Telegram Gateway, gateway.telegram.org): секрет `TG_GATEWAY_TOKEN`, баланс в кабинете. Код приходит в чат «Verification Codes».
+- Если хоть один канал настоящий, а выбранный остался `demo`, сервер отвечает `503 {error:"channel_off", channel}`: демо отдаёт код в ответе, и через него можно было бы войти в чужой аккаунт. Лимиты (5 в час на номер, 20 с IP, повтор раз в минуту) общие для всех каналов.
 ```
+wrangler secret put OTP_SECRET
 wrangler secret put WA_TOKEN
 wrangler secret put WA_PHONE_ID
-# в wrangler.jsonc, vars: "WA_PROVIDER": "whatsapp"
+wrangler secret put TG_GATEWAY_TOKEN
+# в wrangler.jsonc, vars: "WA_PROVIDER": "whatsapp", "TG_PROVIDER": "telegram"
 ```
-Проверено локально с заглушкой Graph API (успех, отказ Meta, `channel_off`); настоящий WhatsApp не проверялся: нужен аккаунт Meta.
+Проверено локально с заглушками Graph API и Telegram Gateway; настоящие WhatsApp и Telegram не проверялись: нужны аккаунты.
 
 ## Лимиты и курс НБТ (добавлено 23.10.2026)
 - `/vin/:vin` без кэша: не больше `VIN_PER_IP` (30) запросов с одного IP в час и `VIN_PER_DAY` (300) всего в сутки, иначе `429 {error:"too_many", wait}`. Повторный VIN из кэша лимит не тратит. Нужен KV `VIN_CACHE`.

@@ -741,9 +741,7 @@ a.seller{color:inherit;text-decoration:none;border-radius:12px}a.seller:hover b{
 .af-chan label{position:relative;cursor:pointer}.af-chan input{position:absolute;opacity:0;inset:0}
 .af-chan label>span{display:flex;align-items:center;justify-content:center;gap:7px;min-height:42px;border-radius:11px;font-weight:700;font-size:14.5px;color:var(--muted);transition:background .15s,color .15s}
 .af-chan svg{width:18px;height:18px}.af-chan input:checked+span{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
-.af-chan input[value=whatsapp]:checked+span svg{color:#1da851}.af-chan input:focus-visible+span{box-shadow:0 0 0 4px color-mix(in srgb,var(--brand) 18%,transparent)}
-.btn-wa{display:flex;align-items:center;justify-content:center;gap:8px}.btn-wa svg{width:19px;height:19px;color:#1da851}
-.auth-or{display:flex;align-items:center;gap:10px;margin:0;font-size:12.5px;color:var(--muted)}.auth-or::before,.auth-or::after{content:"";flex:1;height:1px;background:var(--line)}
+.af-chan input[value=whatsapp]:checked+span svg{color:#1da851}.af-chan input[value=telegram]:checked+span svg{color:#229ed9}.af-chan input:focus-visible+span{box-shadow:0 0 0 4px color-mix(in srgb,var(--brand) 18%,transparent)}
 .af-cards input:focus-visible+span{box-shadow:0 0 0 4px color-mix(in srgb,var(--brand) 18%,transparent)}
 .af-agree{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;align-items:center;font-size:14px;cursor:pointer}
 .af-agree input{position:absolute;opacity:0;width:1px;height:1px}
@@ -1651,16 +1649,13 @@ const API=(()=>{
   const save=()=>{try{localStorage.setItem("myauto.db",JSON.stringify(D));return true}catch(e){toast(R("Не хватает места в браузере: уберите часть фото","Ҷой нест: якчанд аксро нест кунед"));return false}};
   const uid=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   const normPhone=s=>{let d=String(s||"").replace(/\D/g,"");if(d.length===9)d="992"+d;return d.length===12&&d.startsWith("992")?"+"+d:null};
-  async function hash(s){try{const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode("myauto:"+s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
-    catch(e){let h=7;for(const ch of s)h=(h*31+ch.charCodeAt(0))|0;return"x"+h}}
   return{
     normPhone,
     me(){return D.users.find(u=>u.id===D.session)||null},
     user(id){return D.users.find(u=>u.id===id)||null},
     phoneTaken(p){return D.users.some(u=>u.phone===p)||SELLERS.some(s=>normPhone(s.phone)===p)},
-    async register({phone,name,city,type,password}){const p=normPhone(phone);if(!p)throw"phone";if(this.phoneTaken(p))throw"exists";
-      const u={id:uid("u"),phone:p,name:name.trim(),city,type,createdAt:Date.now(),pw:await hash(password)};D.users.push(u);D.session=u.id;save();return u},
-    async login(phone,password){const p=normPhone(phone),u=D.users.find(x=>x.phone===p);if(!u||u.pw!==await hash(password))throw"bad";D.session=u.id;save();return u},
+    async register({phone,name,city,type}){const p=normPhone(phone);if(!p)throw"phone";if(this.phoneTaken(p))throw"exists";
+      const u={id:uid("u"),phone:p,name:name.trim(),city,type,createdAt:Date.now()};D.users.push(u);D.session=u.id;save();return u},
     hasUser(p){return D.users.some(u=>u.phone===normPhone(p))},
     /* Только после подтверждённого кода (otpCheck): номер доказан, пароль не нужен. */
     loginByPhone(phone){const u=D.users.find(x=>x.phone===normPhone(phone));if(!u)throw"bad";D.session=u.id;save();return u},
@@ -1713,7 +1708,7 @@ function renderAcct(){
   b.innerHTML=me?`<span class="ava sm">${esc(me.name[0]||"?")}</span>`:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>`;
   b.setAttribute("aria-label",me?R("Кабинет: ","Кабинет: ")+me.name:R("Войти","Ворид шудан"));
 }
-function needAuth(reason,after){ if(API.me()) return false; openAuth("login",reason,after); return true; }
+function needAuth(reason,after){ if(API.me()) return false; openAuth("phone",reason,after); return true; }
 
 /* auth sheet */
 let AFTER=null,PENDING=null;
@@ -1731,30 +1726,28 @@ const IC={
   heart:'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
   wa:'<path d="M3.5 20.5l1.3-4A8.5 8.5 0 1 1 8 19.6z"/><path d="M9 8.5c0 3.5 3 6.5 6.5 6.5l1-1.6-2-1-1 .8a5 5 0 0 1-2.2-2.2l.8-1-1-2z"/>',
-  sms:'<path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 10h.01M12 10h.01M16 10h.01"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>'};
+  tg:'<path d="M21 4L3 11.2l6 2.3 2.3 6.5 3.4-4.2 5 3.7z"/><path d="M9 13.5l12-9.5"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>'};
 const ic=(k,c="")=>`<svg class="${c}" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[k]}</svg>`;
 const fmtPhone9=d=>{d=d.replace(/\D/g,"").replace(/^992(?=\d{9})/,"").slice(0,9);return[d.slice(0,2),d.slice(2,5),d.slice(5,7),d.slice(7,9)].filter(Boolean).join(" ")};
 const afield=(name,label,icon,inner,hint="")=>`<div class="af" data-af="${name}"><label for="af-${name}">${label}</label><div class="af-box">${icon?ic(icon,"af-ic"):""}${inner}</div><small class="af-err" id="af-${name}-err" aria-live="polite"></small>${hint?`<small class="af-hint">${hint}</small>`:""}</div>`;
 const phoneBox=v=>afield("phone",R("Телефон","Телефон"),"",`<span class="af-pre">${ic("phone","af-ic s")}+992</span><input id="af-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="93 123 45 67" value="${esc(v||"")}" required aria-describedby="af-phone-err">`);
-const passBox=(name,auto,label,hint)=>afield(name,label,"lock",`<input id="af-${name}" name="${name}" type="password" autocomplete="${auto}" placeholder="••••••" required aria-describedby="af-${name}-err"><button type="button" class="af-eye" data-eye="af-${name}" aria-label="${R("Показать пароль","Нишон додани парол")}">${ic("eye")}</button>`,hint);
 function fErr(f,name,msg){const box=f.querySelector(`[data-af="${name}"]`);if(!box)return toast(msg);box.classList.add("bad");box.querySelector(".af-err").textContent=msg;const i=box.querySelector("input,select");if(i){i.setAttribute("aria-invalid","true");i.focus();}}
 function fBusy(f,on){const b=f.querySelector(".af-submit");if(b){b.disabled=on;b.classList.toggle("busy",on);}}
-function pwScore(p){let s=0;if(p.length>=6)s++;if(p.length>=10)s++;if(/\d/.test(p)&&/[a-zа-яё]/i.test(p))s++;if(/[A-ZА-ЯЁ]/.test(p)&&/[^\wа-яё]/i.test(p))s++;return Math.min(s,3)}
 let CODE_T=null;
-/* Код подтверждения по SMS или в WhatsApp (PENDING.channel): отправляет сервер (worker/otp.js), ключи провайдеров на сайт не попадают.
+/* Вход и регистрация без пароля: код в WhatsApp или Telegram (PENDING.channel). Отправляет сервер (worker/otp.js), ключи на сайт не попадают.
    Пока адрес сервера пуст, код создаётся в браузере и показывается на экране, как в прототипе. */
-const CH_NAME=ch=>ch==="whatsapp"?"WhatsApp":"SMS";
+const CH_NAME=ch=>ch==="telegram"?"Telegram":"WhatsApp",CH_ALT=ch=>ch==="telegram"?"whatsapp":"telegram";
 const OTP_API=()=>VIN_API;
 const OTP_ERR=j=>j.error==="too_soon"||j.error==="too_many"?R("Повторно отправить код можно через ","Рамзи навро баъди ")+(j.wait>90?Math.ceil(j.wait/60)+R(" мин"," дақ"):j.wait+R(" с"," с")):
   j.error==="wrong_code"?(j.left>0?R("Код не подходит. Осталось попыток: ","Рамз нодуруст. Боқӣ: ")+j.left:R("Слишком много попыток, запросите новый код","Кӯшиш зиёд шуд, рамзи нав гиред")):
   j.error==="expired"?R("Код устарел, запросите новый","Рамз кӯҳна шуд, рамзи нав гиред"):j.error==="too_many_tries"?R("Слишком много попыток, запросите новый код","Кӯшиш зиёд шуд, рамзи нав гиред"):
-  j.error==="sms_failed"?(PENDING&&PENDING.channel==="whatsapp"?R("Не получилось отправить в WhatsApp, попробуйте SMS","Ба WhatsApp фиристода нашуд, SMS-ро санҷед"):R("Не получилось отправить SMS, попробуйте через минуту","SMS фиристода нашуд")):
-  j.error==="channel_off"?(j.channel==="whatsapp"?R("Код в WhatsApp пока недоступен, выберите SMS","WhatsApp ҳоло дастрас нест, SMS-ро интихоб кунед"):R("Код по SMS пока недоступен, выберите WhatsApp","SMS ҳоло дастрас нест, WhatsApp-ро интихоб кунед")):R("Сервер недоступен, проверьте интернет","Сервер дастрас нест");
+  j.error==="sms_failed"?R("Не получилось отправить в ","Фиристода нашуд ба ")+CH_NAME(PENDING&&PENDING.channel)+R(". Есть ли он на этом номере? Попробуйте ",". Санҷед ")+CH_NAME(CH_ALT(PENDING&&PENDING.channel)):
+  j.error==="channel_off"?CH_NAME(j.channel)+R(" пока не подключён, выберите "," ҳоло пайваст нест, интихоб кунед: ")+CH_NAME(CH_ALT(j.channel)):R("Сервер недоступен, проверьте интернет","Сервер дастрас нест");
 async function otpPost(path,body){let j={};try{const r=await fetch(OTP_API()+path,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});j=await r.json()}catch(e){}
   if(!j.ok)throw OTP_ERR(j);return j}
 /* Заполняет PENDING.code (только в демо: показать на экране), PENDING.via и PENDING.wait. Ошибка — строка для пользователя. */
 async function otpSend(purpose){
-  PENDING.purpose=purpose;PENDING.channel=PENDING.channel==="sms"?"sms":"whatsapp";
+  PENDING.purpose=purpose;PENDING.channel=PENDING.channel==="telegram"?"telegram":"whatsapp";
   if(!OTP_API()){Object.assign(PENDING,{code:String(1000+Math.floor(Math.random()*9000)),via:"demo",wait:30});return}
   const j=await otpPost("/otp/send",{phone:PENDING.phone,purpose,channel:PENDING.channel});
   Object.assign(PENDING,{code:j.demo?j.code:"",via:j.via,wait:j.resendIn||60});
@@ -1764,40 +1757,30 @@ async function otpCheck(code){
   PENDING.ticket=(await otpPost("/otp/verify",{phone:PENDING.phone,code})).ticket;
 }
 const chanBox=cur=>`<div class="af" data-af="channel"><span class="af-lab">${R("Куда прислать код","Рамзро ба куҷо фиристем")}</span><div class="af-chan" role="radiogroup">
-  <label><input type="radio" name="channel" value="whatsapp" ${cur!=="sms"?"checked":""}><span>${ic("wa")}WhatsApp</span></label>
-  <label><input type="radio" name="channel" value="sms" ${cur==="sms"?"checked":""}><span>${ic("sms")}SMS</span></label></div></div>`;
+  <label><input type="radio" name="channel" value="whatsapp" ${cur!=="telegram"?"checked":""}><span>${ic("wa")}WhatsApp</span></label>
+  <label><input type="radio" name="channel" value="telegram" ${cur==="telegram"?"checked":""}><span>${ic("tg")}Telegram</span></label></div></div>`;
 function openAuth(mode,reason,after){
   if(after!==undefined) AFTER=after;
   clearInterval(CODE_T);
   const why=reason?`<div class="auth-why">${ic("lock")}<span>${reason}</span></div>`:"";
-  const tabs=mode==="code"?"":`<div class="auth-tabs" role="tablist" data-on="${mode}"><i></i><button type="button" role="tab" aria-selected="${mode==="login"}" data-auth="login">${R("Вход","Ворид")}</button><button type="button" role="tab" aria-selected="${mode==="register"}" data-auth="register">${R("Регистрация","Бақайдгирӣ")}</button></div>`;
+  if(mode!=="code"&&mode!=="signup") mode="phone";
   const perks=[["star",R("Рейтинг и отзывы о вас","Рейтинг ва шарҳҳо")],["plus",R("Объявления за пару минут","Эълон дар чанд дақиқа")],["heart",R("Избранное на всех устройствах","Баргузида дар ҳама дастгоҳҳо")]];
   let body="";
-  if(mode==="login") body=`<h2 class="auth-h">${R("С возвращением","Хуш омадед")}</h2><p class="auth-sub">${R("Войдите по номеру телефона","Бо рақами телефон ворид шавед")}</p>${why}${tabs}
-    <form class="aform" data-f="login" novalidate>${phoneBox(PENDING&&PENDING.phone?PENDING.phone.slice(4):"")}${passBox("password","current-password",R("Пароль","Парол"))}
-      <button class="btn btn-accent btn-block af-submit"><span>${R("Войти","Ворид шудан")}</span></button></form>
-    <p class="auth-or">${R("или","ё")}</p>
-    <button type="button" class="btn btn-ghost btn-block btn-wa" data-auth="wa">${ic("wa")}<span>${R("Войти по коду из WhatsApp","Бо рамзи WhatsApp ворид шудан")}</span></button>
-    <p class="auth-alt">${R("Впервые на myauto.tj?","Бори аввал?")} <button type="button" class="alink" data-auth="register">${R("Создать аккаунт","Аккаунт сохтан")}</button></p>`;
-  else if(mode==="wa") body=`<h2 class="auth-h">${R("Вход без пароля","Воридшавӣ бе парол")}</h2><p class="auth-sub">${R("Пришлём код на номер вашего аккаунта","Рамзро ба рақами аккаунтатон мефиристем")}</p>${why}
-    <form class="aform" data-f="wa" novalidate>${phoneBox(PENDING&&PENDING.phone?PENDING.phone.slice(4):"")}${chanBox(PENDING&&PENDING.channel)}
+  if(mode==="phone") body=`<h2 class="auth-h">${R("Вход и регистрация","Ворид ва бақайдгирӣ")}</h2><p class="auth-sub">${R("Пришлём код в WhatsApp или Telegram. Пароль не нужен.","Рамзро ба WhatsApp ё Telegram мефиристем. Парол лозим нест.")}</p>${why}
+    <form class="aform" data-f="phone" novalidate>${phoneBox(PENDING&&PENDING.phone?PENDING.phone.slice(4):"")}${chanBox(PENDING&&PENDING.channel)}
       <button class="btn btn-accent btn-block af-submit"><span>${R("Получить код","Гирифтани рамз")}</span></button></form>
-    <p class="auth-alt"><button type="button" class="alink" data-auth="login">${R("Войти с паролем","Бо парол ворид шудан")}</button></p>`;
-  else if(mode==="register") body=`<div class="auth-steps"><span class="on">1</span><i></i><span>2</span></div><h2 class="auth-h">${R("Создайте аккаунт","Аккаунт созед")}</h2><p class="auth-sub">${R("Это займёт меньше минуты","Камтар аз як дақиқа")}</p>${why}${tabs}
-    <form class="aform" data-f="register" novalidate>
-      ${afield("name",R("Имя","Ном"),"user",`<input id="af-name" name="name" autocomplete="given-name" maxlength="40" placeholder="${R("Как к вам обращаться","Номи шумо")}" value="${esc(PENDING?PENDING.name:"")}" required>`)}
-      ${phoneBox(PENDING?PENDING.phone.slice(4):"")}
+    <p class="auth-alt">${R("Впервые на myauto.tj? Аккаунт создадим после кода.","Бори аввал? Аккаунт баъди рамз сохта мешавад.")}</p>`;
+  else if(mode==="signup") body=`<div class="auth-steps"><span class="done">✓</span><i class="on"></i><span class="on">2</span></div><h2 class="auth-h">${R("Почти готово","Қариб тайёр")}</h2><p class="auth-sub">${R("Так вас увидят покупатели","Харидорон шуморо чунин мебинанд")}</p>
+    <form class="aform" data-f="signup" novalidate>
+      ${afield("name",R("Имя","Ном"),"user",`<input id="af-name" name="name" autocomplete="given-name" maxlength="40" placeholder="${R("Как к вам обращаться","Номи шумо")}" value="${esc(PENDING.name||"")}" required>`)}
       <div class="af" data-af="type"><span class="af-lab">${R("Вы продаёте как","Шумо мефурӯшед ҳамчун")}</span><div class="af-cards" role="radiogroup">
-        <label><input type="radio" name="type" value="private" ${!PENDING||PENDING.type==="private"?"checked":""}><span>${ic("user")}<b>${R("Частное лицо","Шахси воқеӣ")}</b><small>${R("Продаю свою машину","Мошини худро мефурӯшам")}</small></span></label>
-        <label><input type="radio" name="type" value="dealer" ${PENDING&&PENDING.type==="dealer"?"checked":""}><span>${ic("shop")}<b>${R("Автосалон","Автосалон")}</b><small>${R("Несколько машин","Якчанд мошин")}</small></span></label></div></div>
-      ${afield("city",R("Город","Шаҳр"),"pin",`<select id="af-city" name="city">${Object.keys(CITY).map(k=>`<option value="${k}" ${k===(PENDING?PENDING.city:"dushanbe")?"selected":""}>${CITY[k][L()]}</option>`).join("")}</select>`)}
-      ${passBox("password","new-password",R("Придумайте пароль","Парол созед"),`<span class="pw-meter" data-s="0"><i></i><i></i><i></i></span><span class="pw-txt">${R("От 6 символов","Аз 6 аломат")}</span>`)}
+        <label><input type="radio" name="type" value="private" ${PENDING.type!=="dealer"?"checked":""}><span>${ic("user")}<b>${R("Частное лицо","Шахси воқеӣ")}</b><small>${R("Продаю свою машину","Мошини худро мефурӯшам")}</small></span></label>
+        <label><input type="radio" name="type" value="dealer" ${PENDING.type==="dealer"?"checked":""}><span>${ic("shop")}<b>${R("Автосалон","Автосалон")}</b><small>${R("Несколько машин","Якчанд мошин")}</small></span></label></div></div>
+      ${afield("city",R("Город","Шаҳр"),"pin",`<select id="af-city" name="city">${Object.keys(CITY).map(k=>`<option value="${k}" ${k===(PENDING.city||"dushanbe")?"selected":""}>${CITY[k][L()]}</option>`).join("")}</select>`)}
       <label class="af-agree" data-af="agree"><input type="checkbox" name="agree"><span class="box"></span><span>${R("Принимаю","Қабул дорам")} <button type="button" class="alink" data-info="rules">${R("правила сайта","қоидаҳоро")}</button></span><small class="af-err" aria-live="polite"></small></label>
-      ${chanBox(PENDING&&PENDING.channel)}
-      <button class="btn btn-accent btn-block af-submit"><span>${R("Получить код","Гирифтани рамз")}</span></button></form>
-    <p class="auth-alt">${R("Уже есть аккаунт?","Аккаунт доред?")} <button type="button" class="alink" data-auth="login">${R("Войти","Ворид шудан")}</button></p>`;
-  else if(mode==="code") body=`<div class="auth-steps"><span class="done">✓</span><i class="on"></i><span class="on">2</span></div><h2 class="auth-h">${R("Введите код","Рамзро ворид кунед")}</h2>
-    <p class="auth-sub">${PENDING.via==="telegram"?R("Отправили код в Telegram на","Рамзро ба Telegram фиристодем:"):PENDING.via==="whatsapp"||PENDING.via==="demo"&&PENDING.channel==="whatsapp"?R("Отправили код в WhatsApp на","Рамзро ба WhatsApp фиристодем:"):R("Отправили SMS на","SMS фиристодем ба")} <b>${esc(PENDING.phone.replace(/^\+992(\d{2})(\d{3})(\d{2})(\d{2})$/,"+992 $1 $2 $3 $4"))}</b> <button type="button" class="alink" data-auth="${PENDING.purpose==="login"?"wa":"register"}">${R("Изменить","Тағйир")}</button></p>
+      <button class="btn btn-accent btn-block af-submit"><span>${R("Создать аккаунт","Аккаунт сохтан")}</span></button></form>`;
+  else body=`<div class="auth-steps"><span class="done">✓</span><i class="on"></i><span class="on">2</span></div><h2 class="auth-h">${R("Введите код","Рамзро ворид кунед")}</h2>
+    <p class="auth-sub">${R("Отправили код в ","Рамзро фиристодем ба ")}${CH_NAME(PENDING.channel)} ${R("на","ба")} <b>${esc(PENDING.phone.replace(/^\+992(\d{2})(\d{3})(\d{2})(\d{2})$/,"+992 $1 $2 $3 $4"))}</b> <button type="button" class="alink" data-auth="phone">${R("Изменить","Тағйир")}</button></p>
     <form class="aform" data-f="code" novalidate><div class="af" data-af="code"><div class="otp">${[0,1,2,3].map(i=>`<input inputmode="numeric" autocomplete="${i?"off":"one-time-code"}" maxlength="1" aria-label="${R("Цифра","Рақам")} ${i+1}" data-otp="${i}">`).join("")}</div><small class="af-err" aria-live="polite"></small></div>
       <input type="hidden" name="code">
       <button class="btn btn-accent btn-block af-submit"><span>${R("Подтвердить","Тасдиқ")}</span></button></form>
@@ -1808,10 +1791,8 @@ function openAuth(mode,reason,after){
     <div class="auth-main"><button type="button" class="auth-x" data-close="1" aria-label="${R("Закрыть","Пӯшидан")}">${ic("x")}</button>${body}</div></div>`;
   const ov=$("#overlay");
   ov.querySelectorAll('input[name="phone"]').forEach(i=>i.addEventListener("input",()=>{const p=i.selectionStart===i.value.length;i.value=fmtPhone9(i.value);if(p)i.setSelectionRange(i.value.length,i.value.length)}));
-  ov.querySelectorAll(".af input,.af select").forEach(i=>i.addEventListener("input",()=>{const b=i.closest(".af");if(b){b.classList.remove("bad");b.querySelector(".af-err").textContent="";i.removeAttribute("aria-invalid")}}));
+  ov.querySelectorAll(".af input,.af select").forEach(i=>i.addEventListener("input",()=>{const b=i.closest(".af");const er=b&&b.querySelector(".af-err");if(er){b.classList.remove("bad");er.textContent="";i.removeAttribute("aria-invalid")}}));
   const ag=ov.querySelector('[name="agree"]');if(ag)ag.addEventListener("change",()=>{const b=ag.closest(".af-agree");b.classList.remove("bad");b.querySelector(".af-err").textContent=""});
-  const pw=ov.querySelector('[data-f="register"] [name="password"]');
-  if(pw)pw.addEventListener("input",()=>{const s=pw.value?pwScore(pw.value):0;ov.querySelector(".pw-meter").dataset.s=s;ov.querySelector(".pw-txt").textContent=!pw.value?R("От 6 символов","Аз 6 аломат"):pw.value.length<6?R("Слишком короткий","Хеле кӯтоҳ"):[R("Слабый","Заиф"),R("Слабый","Заиф"),R("Нормальный","Миёна"),R("Надёжный","Боэътимод")][s]});
   if(mode==="code"){
     const boxes=[...ov.querySelectorAll("[data-otp]")],f=ov.querySelector("form");
     const sync=()=>{f.code.value=boxes.map(b=>b.value).join("");boxes.forEach(b=>b.classList.toggle("filled",!!b.value));if(f.code.value.length===4)f.requestSubmit()};
@@ -1820,7 +1801,7 @@ function openAuth(mode,reason,after){
       b.addEventListener("keydown",e=>{if(e.key==="Backspace"&&!b.value&&boxes[i-1]){boxes[i-1].focus();boxes[i-1].value="";sync();e.preventDefault()}if(e.key==="ArrowLeft"&&boxes[i-1])boxes[i-1].focus();if(e.key==="ArrowRight"&&boxes[i+1])boxes[i+1].focus()});
       b.addEventListener("paste",e=>{const d=(e.clipboardData.getData("text")||"").replace(/\D/g,"").slice(0,4);if(!d)return;e.preventDefault();boxes.forEach((x,j)=>x.value=d[j]||"");boxes[Math.min(d.length,3)].focus();sync()})});
     let left=PENDING.wait||30;const rs=$("#resend");
-    const tick=()=>{if(!rs.isConnected)return clearInterval(CODE_T);rs.innerHTML=left>0?`${R("Отправить код повторно через","Рамзи нав баъди")} <b>${Math.floor(left/60)}:${String(left%60).padStart(2,"0")}</b>`:`<button type="button" class="alink" data-resend="1">${R("Отправить код ещё раз","Рамзро боз фиристед")}</button> · <button type="button" class="alink" data-resend="${PENDING.channel==="whatsapp"?"sms":"whatsapp"}">${PENDING.channel==="whatsapp"?R("Прислать по SMS","Бо SMS фиристед"):R("Прислать в WhatsApp","Ба WhatsApp фиристед")}</button>`;left--};
+    const tick=()=>{if(!rs.isConnected)return clearInterval(CODE_T);rs.innerHTML=left>0?`${R("Отправить код повторно через","Рамзи нав баъди")} <b>${Math.floor(left/60)}:${String(left%60).padStart(2,"0")}</b>`:`<button type="button" class="alink" data-resend="1">${R("Отправить код ещё раз","Рамзро боз фиристед")}</button> · <button type="button" class="alink" data-resend="${CH_ALT(PENDING.channel)}">${R("Прислать в ","Ба ")}${CH_NAME(CH_ALT(PENDING.channel))}</button>`;left--};
     tick();CODE_T=setInterval(tick,1000);
   }
   const first=ov.querySelector(mode==="code"?"[data-otp]":".af input:not([type=radio])");if(first)first.focus();
@@ -1833,35 +1814,29 @@ document.addEventListener("click",e=>{
 });
 function doneAuth(msg){ $("#overlay").innerHTML=""; renderAcct(); toast(msg); const a=AFTER; AFTER=null; if(a) a(); else if(VIEW==="me"||VIEW==="dtp"||VIEW==="seller"||VIEW==="car"||VIEW==="admin") show(VIEW); }
 const FORMS={
-  async login(f){const p=API.normPhone(f.phone.value);
+  /* Шаг 1: номер → код в WhatsApp или Telegram. Есть аккаунт — это вход, нет — регистрация (имя и город спросим после кода). */
+  async phone(f){const p=API.normPhone(f.phone.value);
     if(!p)return fErr(f,"phone",R("Введите 9 цифр номера, например 93 123 45 67","9 рақам ворид кунед"));
-    if(!f.password.value)return fErr(f,"password",R("Введите пароль","Паролро ворид кунед"));
-    fBusy(f,true);try{const u=await API.login(p,f.password.value);doneAuth(R("Здравствуйте, ","Салом, ")+u.name)}
-    catch(e){fBusy(f,false);fErr(f,"password",R("Неверный телефон или пароль","Телефон ё парол нодуруст"));f.password.select()}},
-  async register(f){const p=API.normPhone(f.phone.value);
-    if(f.name.value.trim().length<2)return fErr(f,"name",R("Укажите имя, от 2 букв","Номро нависед"));
-    if(!p)return fErr(f,"phone",R("Введите 9 цифр номера, например 93 123 45 67","9 рақам ворид кунед"));
-    if(API.phoneTaken(p)){fErr(f,"phone",R("Этот номер уже зарегистрирован","Ин рақам аллакай ҳаст"));const b=f.querySelector('[data-af="phone"] .af-err');b.innerHTML+=` · <button type="button" class="alink" data-auth="login">${R("Войти","Ворид")}</button>`;PENDING={phone:p};return}
-    if(f.password.value.length<6)return fErr(f,"password",R("Пароль должен быть от 6 символов","Парол аз 6 аломат"));
-    if(!f.agree.checked){const b=f.querySelector(".af-agree");b.classList.add("bad");b.querySelector(".af-err").textContent=R("Нужно согласие с правилами","Розигӣ лозим аст");return}
-    fBusy(f,true);
-    PENDING={phone:p,name:f.name.value.trim(),city:f.city.value,type:f.type.value,password:f.password.value,channel:f.channel.value};
-    try{await otpSend("register")}catch(msg){fBusy(f,false);return fErr(f,"phone",msg)}
-    setTimeout(()=>openAuth("code"),OTP_API()||matchMedia("(prefers-reduced-motion: reduce)").matches?0:450)},
-  /* Вход без пароля: код в WhatsApp (или SMS) на номер, у которого уже есть аккаунт. */
-  async wa(f){const p=API.normPhone(f.phone.value);
-    if(!p)return fErr(f,"phone",R("Введите 9 цифр номера, например 93 123 45 67","9 рақам ворид кунед"));
-    if(!API.hasUser(p)){fErr(f,"phone",R("Аккаунта с этим номером нет","Бо ин рақам аккаунт нест"));const b=f.querySelector('[data-af="phone"] .af-err');b.innerHTML+=` · <button type="button" class="alink" data-auth="register">${R("Создать","Сохтан")}</button>`;PENDING={phone:p,channel:f.channel.value};return}
+    const known=API.hasUser(p);
+    if(!known&&API.phoneTaken(p))return fErr(f,"phone",R("Этот номер уже занят","Ин рақам банд аст"));
     fBusy(f,true);PENDING={phone:p,channel:f.channel.value};
-    try{await otpSend("login")}catch(msg){fBusy(f,false);return fErr(f,"phone",msg)}
+    try{await otpSend(known?"login":"register")}catch(msg){fBusy(f,false);return fErr(f,"phone",msg)}
     openAuth("code")},
   async code(f){const box=f.querySelector('[data-af="code"]');
     if(f.code.value.length<4){box.classList.add("bad");box.querySelector(".af-err").textContent=R("Введите 4 цифры","4 рақам ворид кунед");return}
     fBusy(f,true);
     try{await otpCheck(f.code.value)}catch(msg){fBusy(f,false);box.classList.add("bad");box.querySelector(".af-err").textContent=msg;f.querySelectorAll("[data-otp]").forEach(x=>x.value="");f.code.value="";f.querySelector("[data-otp]").focus();return}
-    box.classList.remove("bad");
-    if(PENDING.purpose==="login"){try{const u=API.loginByPhone(PENDING.phone);PENDING=null;clearInterval(CODE_T);doneAuth(R("Здравствуйте, ","Салом, ")+u.name)}catch(e){fBusy(f,false);toast(R("Аккаунт не найден","Аккаунт ёфт нашуд"))}return}
-    try{const u=await API.register(PENDING);PENDING=null;clearInterval(CODE_T);doneAuth(R("Аккаунт создан. Добро пожаловать, ","Аккаунт сохта шуд. Хуш омадед, ")+u.name)}catch(e){fBusy(f,false);toast(R("Этот номер уже зарегистрирован","Ин рақам аллакай ҳаст"))}},
+    box.classList.remove("bad");clearInterval(CODE_T);
+    if(API.hasUser(PENDING.phone)){const u=API.loginByPhone(PENDING.phone);PENDING=null;return doneAuth(R("Здравствуйте, ","Салом, ")+u.name)}
+    PENDING.verified=true;openAuth("signup")},
+  /* Шаг 3, только для нового номера: номер уже подтверждён кодом. */
+  async signup(f){
+    if(!PENDING||!PENDING.verified)return openAuth("phone");
+    if(f.name.value.trim().length<2)return fErr(f,"name",R("Укажите имя, от 2 букв","Номро нависед"));
+    if(!f.agree.checked){const b=f.querySelector(".af-agree");b.classList.add("bad");b.querySelector(".af-err").textContent=R("Нужно согласие с правилами","Розигӣ лозим аст");return}
+    fBusy(f,true);
+    try{const u=await API.register({phone:PENDING.phone,name:f.name.value.trim(),city:f.city.value,type:f.type.value});PENDING=null;doneAuth(R("Аккаунт создан. Добро пожаловать, ","Аккаунт сохта шуд. Хуш омадед, ")+u.name)}
+    catch(e){fBusy(f,false);toast(R("Этот номер уже зарегистрирован","Ин рақам аллакай ҳаст"))}},
   profile(f){if(f.name.value.trim().length<2){f.name.focus();return}API.updateMe({name:f.name.value.trim(),city:f.city.value,type:f.type.value});$("#overlay").innerHTML="";renderAcct();syncListings();renderMe();toast(R("Профиль сохранён","Профил захира шуд"))},
   post(f){sendPost(f)},
   review(f){const sid=f.dataset.seller;
@@ -3032,7 +3007,7 @@ $("#cform").addEventListener("change",calcCompute);
 $("#cform").addEventListener("submit",e=>e.preventDefault());
 $("#post-btn").onclick=$("#post-tab").onclick=()=>openPost();
 $("#fav-tab").onclick=()=>nav("favs");
-$("#acct").onclick=()=>API.me()?nav("me"):openAuth("login");
+$("#acct").onclick=()=>API.me()?nav("me"):openAuth("phone");
 document.addEventListener("change",async e=>{if(e.target.id!=="p-photo")return;const files=[...e.target.files].slice(0,8-POSTPH.length);
   for(const f of files){try{POSTPH.push(await photoData(f))}catch(err){toast(R("Не удалось прочитать фото","Аксро хондан нашуд"))}}drawPostPh();});
 $("#theme").onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme?r.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;r.dataset.theme=dark?"light":"dark";store("theme",r.dataset.theme);};

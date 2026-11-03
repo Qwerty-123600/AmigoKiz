@@ -1,12 +1,13 @@
-// Код подтверждения для регистрации, входа и сброса пароля: по SMS или в WhatsApp.
+// Код подтверждения для входа и регистрации: в WhatsApp, Telegram или по SMS.
 // Ключи провайдеров живут только здесь, в секретах сервера.
 //
-// Канал выбирает пользователь: /otp/send {channel:"sms"|"whatsapp"}. У каждого канала своя цепочка провайдеров.
+// Канал выбирает пользователь: /otp/send {channel:"whatsapp"|"telegram"|"sms"}. У каждого канала своя цепочка
+// провайдеров: WA_PROVIDER, TG_PROVIDER, SMS_PROVIDER. Сайт и приложение сейчас предлагают только WhatsApp и Telegram.
 // env: SMS_PROVIDER  "osonsms" | "telegram" | "twilio" | "demo" или цепочка через запятую ("telegram,osonsms":
 //                    сначала Telegram, если у номера нет Telegram — SMS). Пусто = "demo": код возвращается в ответе.
 //      OTP_SECRET    длинная случайная строка, обязательна для настоящей отправки.
 //      OSON_LOGIN, OSON_SENDER, OSON_TOKEN (Bearer) и/или OSON_HASH (подпись str_hash), OSON_URL — OsonSMS.
-//      TG_GATEWAY_TOKEN — Telegram Gateway. TWILIO_SID, TWILIO_TOKEN, TWILIO_FROM — Twilio.
+//      TG_PROVIDER   "telegram" | "demo". Пусто = "demo". TG_GATEWAY_TOKEN — Telegram Gateway. TWILIO_SID, TWILIO_TOKEN, TWILIO_FROM — Twilio.
 //      WA_PROVIDER   "whatsapp" | "demo" | "whatsapp,osonsms" (если Meta отказала сразу — SMS). Пусто = "demo".
 //      WA_TOKEN, WA_PHONE_ID — WhatsApp Cloud API (Meta): постоянный токен системного пользователя и Phone number ID.
 //      WA_TEMPLATE   имя одобренного шаблона категории Authentication (по умолчанию myauto_code), WA_LANG (ru),
@@ -107,12 +108,12 @@ export async function handleOtp(req, env, deps, json) {
   if (!deps.store) return json({ error: "no_store" }, 503);
   let body;
   try { body = await req.json(); } catch { return json({ error: "bad_json" }, 400); }
-  const channel = body.channel === "whatsapp" ? "whatsapp" : "sms";
-  const chain = chainOf(channel === "whatsapp" ? env.WA_PROVIDER : env.SMS_PROVIDER);
+  const channel = ["whatsapp", "telegram"].includes(body.channel) ? body.channel : "sms";
+  const chain = chainOf({ whatsapp: env.WA_PROVIDER, telegram: env.TG_PROVIDER, sms: env.SMS_PROVIDER }[channel]);
   const demo = chain.includes("demo");
   if (chain.some((p) => p !== "demo" && !PROVIDERS[p])) return json({ error: "bad_provider" }, 503);
   // Секрет нужен, как только хоть один канал шлёт по-настоящему: иначе демо-канал подписывал бы ticket строкой "demo".
-  const live = [env.SMS_PROVIDER, env.WA_PROVIDER].some((c) => chainOf(c).some((p) => p !== "demo"));
+  const live = [env.SMS_PROVIDER, env.WA_PROVIDER, env.TG_PROVIDER].some((c) => chainOf(c).some((p) => p !== "demo"));
   if (live && !env.OTP_SECRET) return json({ error: "not_configured" }, 503);
   // Когда один канал настоящий, демо-канал отключён: он отдаёт код в ответе, и через него можно было бы
   // подтвердить чужой номер. Клиент предлагает выбрать другой способ.

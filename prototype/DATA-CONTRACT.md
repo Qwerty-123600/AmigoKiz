@@ -58,9 +58,8 @@
 - Отсутствие записей по VIN никогда не показывается как «ДТП не было», только как «записей нет».
 
 ## Эндпоинты (для будущего сервера)
-- `POST /otp/send {phone, purpose: "register"|"reset"}` → `{ok, via, resendIn}` и `POST /otp/verify {phone, code}` → `{ok, ticket}` — уже написаны, /vin-proxy/otp.js (README там же). Пока сервер в демо-режиме, `/otp/send` возвращает `demo:true, code`, и клиент показывает код на экране.
-- `POST /auth/register {phone,name,city,password,ticket}` → `{user, token}`; сервер принимает только с действующим `ticket` от `/otp/verify` (`verifyTicket` в otp.js). Так же `POST /auth/reset {phone,password,ticket}`.
-- `POST /auth/login {phone,password}` → `{user, token}`
+- Пароля нет (с 03.11.2026): вход и регистрация только по коду из WhatsApp или Telegram. `POST /otp/send {phone, purpose: "login"|"register", channel: "whatsapp"|"telegram"}` → `{ok, via, channel, resendIn}` и `POST /otp/verify {phone, code}` → `{ok, ticket}` — уже написаны, worker/otp.js в репозитории (описание в worker/PROXY.md). Пока сервер в демо-режиме, `/otp/send` возвращает `demo:true, code`, и клиент показывает код на экране.
+- `POST /auth/register {phone,name,city,type,ticket}` → `{user, token}` и `POST /auth/login {phone,ticket}` → `{user, token}`; сервер принимает только с действующим `ticket` от `/otp/verify` (`verifyTicket` в otp.js).
 - `GET /me`, `PATCH /me`
 - `GET /listings?brand&city&...`, `GET /listings/:id`, `POST /listings`, `PATCH /listings/:id`, `DELETE /listings/:id` (только владелец)
 - `GET /sellers/:id` → `{user, rating, count, listings}`

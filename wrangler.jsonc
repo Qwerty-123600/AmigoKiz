@@ -11,8 +11,9 @@
     "ALLOWED_ORIGINS": "https://myauto.myauto-tj.workers.dev,https://myauto.tj,https://www.myauto.tj",
     "SMS_PROVIDER": "demo",
     "WA_PROVIDER": "demo",
+    "TG_PROVIDER": "demo",
     "VIN_PER_IP": "30",
     "VIN_PER_DAY": "300"
   }
-  // Секреты задаются в панели Cloudflare (Settings → Variables and Secrets): V17_USER, V17_PASS, ADMIN_KEY, OTP_SECRET, WA_TOKEN, WA_PHONE_ID.
+  // Секреты задаются в панели Cloudflare (Settings → Variables and Secrets): V17_USER, V17_PASS, ADMIN_KEY, OTP_SECRET, WA_TOKEN, WA_PHONE_ID, TG_GATEWAY_TOKEN.
 }
